@@ -41,11 +41,8 @@ if(NOT JavaScriptCore_LIBRARIES MATCHES ".+-NOTFOUND")
   get_filename_component(JavaScriptCore_LIBRARY_DIR ${JavaScriptCore_LIBRARIES} DIRECTORY)
 
   # If we found the JavaScriptCore library and we're using a Visual
-  # Studio generator and we're targeting either WindowsStore or
-  # WindowsPhone, then allow Visual Studio to use both the
-  # JavaScriptCore-Debug.lib and JavaScriptCore-Release.lib if they
-  # exist.
-  if(CMAKE_GENERATOR MATCHES "^Visual Studio .+" AND CMAKE_SYSTEM_NAME MATCHES "^Windows(Store|Phone)")
+  # Studio generator, then set Visual Studio to use version os JSC lib matching current Configuration of the build.
+  if(CMAKE_GENERATOR MATCHES "^Visual Studio .+")
     string(REGEX REPLACE "-(Debug|Release)" "-$(Configuration)" JavaScriptCore_LIBRARIES ${JavaScriptCore_LIBRARIES})
   endif()
 
