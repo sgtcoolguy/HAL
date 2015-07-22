@@ -516,3 +516,33 @@ TEST_F(JSObjectTests, JSFunctionCallback) {
   XCTAssertTrue(noop_function(noop_function).IsUndefined());
   
 }
+
+TEST_F(JSObjectTests, JSON_stringify) {
+  auto js_context = js_context_group.CreateContext();
+  auto global_object = js_context.get_global_object();
+  std::unordered_map<std::string, JSValue> properties = { 
+    { "double", js_context.CreateNumber(UnitTestConstants::pi) }
+  };
+
+  auto js_map = js_context.CreateObject(properties);
+
+  std::vector<JSValue> array_args = { 
+    js_context.CreateString("Hello"),
+    js_context.CreateNumber(123),
+    js_context.CreateNumber(UnitTestConstants::pi),
+    js_context.CreateBoolean(true),
+    js_context.CreateObject()
+  };
+
+  auto js_array = js_context.CreateArray(array_args);
+
+  global_object.SetProperty("js_map", js_map);
+  global_object.SetProperty("js_array", js_array);
+
+  auto js_result = js_context.JSEvaluateScript("JSON.stringify(js_map);");
+  XCTAssertEqual("{\"double\":3.141592653589793}", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_array);");
+  XCTAssertEqual("[\"Hello\",123,3.141592653589793,true,{}]", static_cast<std::string>(js_result));
+}
+

@@ -1281,3 +1281,24 @@ TEST_F(JSExportTests, ExceptionCall2) {
     XCTAssertEqual(2, e.js_stack().size());
   }
 }
+
+TEST_F(JSExportTests, JSON_stringify) {
+  JSContext js_context = js_context_group.CreateContext();
+  JSObject global_object   = js_context.get_global_object();
+  
+  JSObject widget = js_context.CreateObject(JSExport<Widget>::Class());
+  global_object.SetProperty("Widget", widget);
+
+  std::vector<JSValue> args = {js_context.CreateString("foo"), js_context.CreateNumber(123)};
+  JSObject js_widget = widget.CallAsConstructor(args);
+  global_object.SetProperty("widget", js_widget);
+
+  auto js_result = js_context.JSEvaluateScript("JSON.stringify(Widget);");
+  XCTAssertEqual("{\"number\":42,\"name\":\"world\",\"value\":{},\"pi\":3.141592653589793,\"test_postInitialize_called\":true}", static_cast<std::string>(js_result)); 
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(widget);");
+  XCTAssertEqual("{\"number\":123,\"name\":\"foo\",\"value\":{},\"pi\":3.141592653589793,\"test_postInitialize_called\":true,\"test_postCallAsConstructor_called\":true}", static_cast<std::string>(js_result)); 
+
+  // Circular reference should throw exception
+  ASSERT_THROW(js_context.JSEvaluateScript("widget.value.parent = widget; JSON.stringify(widget);"), std::runtime_error);
+}

@@ -253,3 +253,50 @@ TEST_F(JSValueTests, CopyingValuesBetweenContexts) {
   // You can't copy JSValue's between different JSContextGroups.
   ASSERT_THROW(js_value_3 = js_value_1, std::runtime_error);
 }
+
+TEST_F(JSValueTests, JSON_Stringify) {
+  auto js_context   = js_context_group.CreateContext();
+  auto js_undefined = js_context.CreateUndefined();
+  auto js_null  = js_context.CreateNull();
+  auto js_false = js_context.CreateBoolean(false);
+  auto js_true  = js_context.CreateBoolean(true);
+  auto js_double = js_context.CreateNumber(UnitTestConstants::pi);
+  auto js_int32  = js_context.CreateNumber(int32_t(42));
+  auto js_uint32 = js_context.CreateNumber(uint32_t(42));
+  auto js_string = js_context.CreateString("Hello, World");
+
+  auto global_object = js_context.get_global_object();
+
+  global_object.SetProperty("js_undefined", js_undefined);
+  global_object.SetProperty("js_null", js_null);
+  global_object.SetProperty("js_false", js_false);
+  global_object.SetProperty("js_true", js_true);
+  global_object.SetProperty("js_double", js_double);
+  global_object.SetProperty("js_int32", js_int32);
+  global_object.SetProperty("js_uint32", js_uint32);
+  global_object.SetProperty("js_string", js_string);
+
+  auto js_result = js_context.JSEvaluateScript("JSON.stringify(js_undefined);");
+  XCTAssertEqual("undefined", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_null);");
+  XCTAssertEqual("null", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_false);");
+  XCTAssertEqual("false", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_true);");
+  XCTAssertEqual("true", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_double);");
+  XCTAssertEqual("3.141592653589793", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_int32);");
+  XCTAssertEqual("42", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_uint32);");
+  XCTAssertEqual("42", static_cast<std::string>(js_result));
+
+  js_result = js_context.JSEvaluateScript("JSON.stringify(js_string);");
+  XCTAssertEqual("\"Hello, World\"", static_cast<std::string>(js_result));
+}
