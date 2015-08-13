@@ -33,7 +33,7 @@ class JSObjectTests : public testing::Test {
 };
 
 TEST_F(JSObjectTests, ObjectSizes) {
-  XCTAssertEqual(sizeof(std::intptr_t)                         , sizeof(JSContextGroup));
+  XCTAssertEqual(sizeof(std::intptr_t)  + sizeof(std::intptr_t), sizeof(JSContextGroup));
   XCTAssertEqual(sizeof(JSContextGroup) + sizeof(std::intptr_t), sizeof(JSContext));
   
   // JSValue and JSObject are base classes, so have an extra pointer for the

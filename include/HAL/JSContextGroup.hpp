@@ -102,6 +102,7 @@ namespace HAL {
     // need to be exported from a DLL.
 #pragma warning(push)
 #pragma warning(disable: 4251)
+    bool managed__ { false };
     JSContextGroupRef js_context_group_ref__;
 #pragma warning(pop)
     

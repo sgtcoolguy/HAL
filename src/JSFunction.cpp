@@ -26,7 +26,13 @@ JSFunction::JSFunction(const JSContext& js_context, const JSString& function_nam
         : JSObject(js_context, MakeFunction(js_context, function_name, callback)) {
 }
 
-JSObjectRef JSFunction::MakeFunction(const JSContext& js_context, const JSString& body, const std::vector<JSString>& parameter_names, const JSString& function_name, const JSString& source_url, int starting_line_number) {
+JSObjectRef JSFunction::MakeFunction(const JSContext& js_context, const JSString& body, const std::vector<JSString>& parameter_names, const JSString& func_name, const JSString& source_url, int starting_line_number) {
+
+    JSString function_name = func_name;
+    if (function_name == "") {
+        function_name = JSString("anonymous");
+    }
+
     JSValueRef exception { nullptr };
     JSStringRef source_url_ref = (source_url.length() > 0) ? static_cast<JSStringRef>(source_url) : nullptr;
     JSObjectRef js_object_ref = nullptr;
