@@ -34,12 +34,15 @@ namespace HAL {
     assert(js_context_group_ref__);
     HAL_LOG_TRACE("JSContextGroup:: retain ", js_context_group_ref__, " for ", this);
     JSContextGroupRetain(js_context_group_ref__);
+    managed__ = true;
   }
   
   JSContextGroup::~JSContextGroup() HAL_NOEXCEPT {
     HAL_LOG_TRACE("JSContextGroup:: dtor ", this);
     HAL_LOG_TRACE("JSContextGroup:: release ", js_context_group_ref__, " for ", this);
-    JSContextGroupRelease(js_context_group_ref__);
+    if (managed__) {
+      JSContextGroupRelease(js_context_group_ref__);
+    }
   }
   
   JSContextGroup::JSContextGroup(const JSContextGroup& rhs) HAL_NOEXCEPT
@@ -47,6 +50,7 @@ namespace HAL {
     HAL_LOG_TRACE("JSContextGroup:: copy ctor ", this);
     HAL_LOG_TRACE("JSContextGroup:: retain ", js_context_group_ref__, " for ", this);
     JSContextGroupRetain(js_context_group_ref__);
+    managed__ = true;
   }
   
   JSContextGroup::JSContextGroup(JSContextGroup&& rhs) HAL_NOEXCEPT
@@ -54,6 +58,7 @@ namespace HAL {
     HAL_LOG_TRACE("JSContextGroup:: move ctor ", this);
     HAL_LOG_TRACE("JSContextGroup:: retain ", js_context_group_ref__, " for ", this);
     JSContextGroupRetain(js_context_group_ref__);
+    managed__ = true;
   }
   
   JSContextGroup& JSContextGroup::operator=(JSContextGroup rhs) HAL_NOEXCEPT {
