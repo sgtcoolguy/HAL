@@ -60,6 +60,10 @@
 #include "HAL/detail/JSPerformanceCounter.hpp"
 #include <JavaScriptCore/JavaScript.h>
 
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
+
 #if (TARGET_OS_MAC || TARGET_OS_IPHONE)
 /*!
   @function
