@@ -60,6 +60,7 @@
 #include "HAL/detail/JSPerformanceCounter.hpp"
 #include <JavaScriptCore/JavaScript.h>
 
+#if (TARGET_OS_MAC || TARGET_OS_IPHONE)
 /*!
   @function
   @abstract Gets the global context of a JavaScript execution context.
@@ -67,5 +68,6 @@
   @result ctx's global context.
 */
 extern "C" JSGlobalContextRef JSContextGetGlobalContext(JSContextRef ctx);
+#endif
 
 #endif  // _HAL_DETAIL_JSBASE_HPP_
