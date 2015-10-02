@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
+#include <iterator>
 
 #include <JavaScriptCore/JavaScript.h>
 
