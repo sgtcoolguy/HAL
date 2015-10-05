@@ -11,6 +11,7 @@
 
 #include <string>
 #include <algorithm>
+#include <iterator>
 
 namespace HAL {
   
