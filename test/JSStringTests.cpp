@@ -77,3 +77,14 @@ TEST(JSStringTests, StdString) {
   // No implicit conversions.
   //XCTAssertEqual(std::string("hello, std::string"), JSString(string2));
 }
+
+TEST(JSStringTests, from_JSStringRef) {
+  JSString string1 { "hello, JSString" };
+  JSStringRef string1_ref = static_cast<JSStringRef>(string1);
+
+  JSString string2 = JSString(string1_ref);
+  XCTAssertEqual(string1, string2);
+  XCTAssertEqual(string1.length(), string2.length());
+  XCTAssertEqual(static_cast<std::string>(string1), static_cast<std::string>(string2));
+  XCTAssertEqual("hello, JSString", static_cast<std::string>(string2));
+}
