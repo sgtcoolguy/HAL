@@ -128,17 +128,6 @@ namespace HAL {
        */
       operator std::string() const HAL_NOEXCEPT;
       
-      /*!
-       @method
-       
-       @abstract Convert this JavaScript string to a UTF-16 encoded
-       std::u16string.
-       
-       @result This JavaScript string converted to a UTF-16 encoded
-       std::u16string.
-       */
-      operator std::u16string() const HAL_NOEXCEPT;
-      
       std::size_t hash_value() const;
       
       ~JSString()                   HAL_NOEXCEPT;
@@ -147,6 +136,14 @@ namespace HAL {
       JSString& operator=(JSString) HAL_NOEXCEPT;
       void swap(JSString&)          HAL_NOEXCEPT;
 
+      // For interoperability with the JavaScriptCore C API.
+      explicit JSString(JSStringRef js_string_ref) HAL_NOEXCEPT;
+      
+      // For interoperability with the JavaScriptCore C API.
+      explicit operator JSStringRef() const {
+        return js_string_ref__;
+      }
+      
     private:
       
       // These classes and functions need access to operator
@@ -159,19 +156,11 @@ namespace HAL {
       
       friend std::vector<JSStringRef> detail::to_vector(const std::vector<JSString>&);
       
-      // For interoperability with the JavaScriptCore C API.
-      explicit operator JSStringRef() const {
-        return js_string_ref__;
-      }
-      
       // Only the following classes and functions can create a JSString.
       friend class JSValue;
       
       template<typename T>
       friend class detail::JSExportClass; // static functions
-      
-      // For interoperability with the JavaScriptCore C API.
-      explicit JSString(JSStringRef js_string_ref) HAL_NOEXCEPT;
       
       // Prevent heap based objects.
       static void * operator new(std::size_t);     // #1: To prevent allocation of scalar objects
@@ -186,7 +175,6 @@ namespace HAL {
 #pragma warning(disable: 4251)
       JSStringRef    js_string_ref__ { nullptr };
       std::string    string__;
-      std::u16string u16string__;
       std::size_t    hash_value__;
 #pragma warning(pop)
       
