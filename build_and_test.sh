@@ -8,27 +8,6 @@
 
 set -e
 
-# check and see if we already have it installed in our local directory
-if test -d "`pwd`/gtest-1.7.0"; then
-    echo "Found local gtest-1.7.0, setting GTEST_ROOT"
-    declare -x GTEST_ROOT="`pwd`/gtest-1.7.0"
-fi
-
-# if not found, install it
-if ! test -d "${GTEST_ROOT}"; then
-    if [[ ${CMAKE_HOST_WIN32} != 0 ]]; then
-        echo "Installing GTest ... one moment"
-        echo
-        curl -O http://timobile.appcelerator.com.s3.amazonaws.com/gtest-1.7.0-osx.zip
-        unzip gtest-1.7.0-osx.zip
-        rm -rf gtest-1.7.0-osx.zip
-        declare -x GTEST_ROOT="`pwd`/gtest-1.7.0"
-    else
-        echo "GTEST_ROOT must point to your Google Test installation."
-        exit 1
-    fi
-fi
-
 declare -rx VERBOSE=1
 
 declare -r HAL_DISABLE_TESTS="OFF"
@@ -39,6 +18,7 @@ cmd+=" -DHAL_DISABLE_TESTS=${HAL_DISABLE_TESTS}"
 declare -r CMAKE_HOST_WIN32=$(cmake -P cmake/IsWin32.cmake 2>&1 | tr -d '\r\n')
 
 if [[ x"${CMAKE_HOST_WIN32}" == "x1" ]]; then
+    cmd+=" -G \"Visual Studio 12 2013\""
     declare -r project_name=$(grep -E '^\s*project[(][^)]+[)]\s*$' CMakeLists.txt | awk 'BEGIN {FS="[()]"} {printf "%s", $2}')
     declare -r solution_file_name="${project_name}.sln"
     declare -r MSBUILD_PATH="c:/Program Files (x86)/MSBuild/12.0/Bin/MSBuild.exe"
