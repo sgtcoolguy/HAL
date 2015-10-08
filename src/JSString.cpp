@@ -22,7 +22,6 @@ namespace HAL {
   , string__(string) {
     HAL_LOG_TRACE("JSString:: ctor 1 ", this);
     HAL_LOG_TRACE("JSString:: retain ", js_string_ref__, " (implicit) for ", this);
-    const JSChar* string_ptr = JSStringGetCharactersPtr(js_string_ref__);
     
     std::hash<std::string> hash_function = std::hash<std::string>();
     hash_value__ = hash_function(static_cast<std::string>(string__));
@@ -34,7 +33,6 @@ namespace HAL {
   , string__(string) {
     HAL_LOG_TRACE("JSString:: ctor 2 ", this);
     HAL_LOG_TRACE("JSString:: retain ", js_string_ref__, " (implicit) for ", this);
-    const JSChar* string_ptr = JSStringGetCharactersPtr(js_string_ref__);
 
     std::hash<std::string> hash_function = std::hash<std::string>();
     hash_value__ = hash_function(static_cast<std::string>(string__));
@@ -113,8 +111,11 @@ namespace HAL {
     HAL_LOG_TRACE("JSString:: ctor 3 ", this);
     HAL_LOG_TRACE("JSString:: retain ", js_string_ref__, " for ", this);
 
-    const JSChar* string_ptr = JSStringGetCharactersPtr(js_string_ref__);
-    string__ = std::string(string_ptr, string_ptr + length());
+    const auto size = JSStringGetMaximumUTF8CStringSize(js_string_ref__);
+    auto buffer = new char[size];
+    JSStringGetUTF8CString(js_string_ref__, buffer, size);
+    string__ = std::string(buffer);
+    delete[] buffer;
     
     std::hash<std::string> hash_function = std::hash<std::string>();
     hash_value__ = hash_function(static_cast<std::string>(string__));
