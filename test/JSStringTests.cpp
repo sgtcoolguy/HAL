@@ -88,3 +88,16 @@ TEST(JSStringTests, from_JSStringRef) {
   XCTAssertEqual(static_cast<std::string>(string1), static_cast<std::string>(string2));
   XCTAssertEqual("hello, JSString", static_cast<std::string>(string2));
 }
+
+TEST(JSStringTests, UTF8) {
+  JSString string1 { "spät" };
+  JSStringRef string1_ref = static_cast<JSStringRef>(string1);
+
+  JSString string2 = JSString(string1_ref);
+  XCTAssertEqual(string1, string2);
+  XCTAssertEqual(4, string2.length());
+  XCTAssertEqual(string1.length(), string2.length());
+  XCTAssertEqual(static_cast<std::string>(string1), static_cast<std::string>(string2));
+  XCTAssertEqual("spät", static_cast<std::string>(string2));
+}
+
