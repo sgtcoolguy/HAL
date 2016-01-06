@@ -209,10 +209,16 @@ if (WIN32)
   # Therefore we test for the processor architecture we are targeting
   # and if its i386 (i.e. the emulator) then we pass /SAFESEH:NO to
   # the linker.
-  include(${PROJECT_SOURCE_DIR}/cmake/TargetArch.cmake)
-  target_architecture(target_architecture)
-  if (${target_architecture} STREQUAL i386)
-    set_property(TARGET HAL APPEND_STRING PROPERTY LINK_FLAGS " /SAFESEH:NO")
+  # 
+  # If target platform is Windows Phone/Store,
+  # we should not disable SAFESEH otherwise Windows App Certification will fail.
+  # 
+  if (NOT CMAKE_SYSTEM_NAME MATCHES "^Windows(Phone|Store)$")
+    include(${PROJECT_SOURCE_DIR}/cmake/TargetArch.cmake)
+    target_architecture(target_architecture)
+    if (${target_architecture} STREQUAL i386)
+      set_property(TARGET HAL APPEND_STRING PROPERTY LINK_FLAGS " /SAFESEH:NO")
+    endif()
   endif()
 
   # Silence this warning when lnking the Debug configuration:
