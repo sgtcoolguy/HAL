@@ -34,6 +34,7 @@ void ChildWidget::JSExportInitialize() {
   JSExport<ChildWidget>::SetParent(JSExport<Widget>::Class());
   JSExport<ChildWidget>::AddValueProperty("name", std::mem_fn(&ChildWidget::js_get_name));
   JSExport<ChildWidget>::AddValueProperty("my_name", std::mem_fn(&ChildWidget::js_get_my_name));
+  JSExport<ChildWidget>::AddConstantProperty("pi"  , std::mem_fn(&ChildWidget::js_get_pi));
 }
 
 JSValue ChildWidget::js_get_name() const HAL_NOEXCEPT {
@@ -43,4 +44,9 @@ JSValue ChildWidget::js_get_name() const HAL_NOEXCEPT {
 
 JSValue ChildWidget::js_get_my_name() const HAL_NOEXCEPT {
   return get_context().CreateString("child widget");
+}
+
+JSValue ChildWidget::js_get_pi() HAL_NOEXCEPT {
+  count_for_child_pi__++;
+  return get_context().CreateString("hello pi");
 }

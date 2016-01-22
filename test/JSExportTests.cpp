@@ -160,6 +160,34 @@ TEST_F(JSExportTests, JSExport) {
   //XCTAssertEqual(nullptr, string_ptr);
 }
 
+TEST_F(JSExportTests, JSExportConstantChain) {
+  JSContext js_context = js_context_group.CreateContext();
+  JSObject global_object = js_context.get_global_object();
+  
+  XCTAssertFalse(global_object.HasProperty("ChildWidget"));
+  JSObject widget = js_context.CreateObject(JSExport<ChildWidget>::Class());
+  global_object.SetProperty("ChildWidget", widget);
+  XCTAssertTrue(global_object.HasProperty("ChildWidget"));
+  
+  // check if child widget properly override the constant
+  auto result = js_context.JSEvaluateScript("ChildWidget.pi;");
+  XCTAssertTrue(result.IsString());
+  XCTAssertEqual("hello pi", static_cast<std::string>(result));
+
+  auto widget_ptr = widget.GetPrivate<ChildWidget>();
+  // check if parent callback is never called
+  XCTAssertEqual(0, widget_ptr->get_count_for_pi());
+
+  // check if child callback is called once
+  XCTAssertEqual(1, widget_ptr->get_count_for_child_pi());
+
+  // check if it's properly cached
+  result = js_context.JSEvaluateScript("ChildWidget.pi;");
+  XCTAssertTrue(result.IsString());
+  XCTAssertEqual("hello pi", static_cast<std::string>(result));
+  XCTAssertEqual(1, widget_ptr->get_count_for_child_pi());
+}
+
 TEST_F(JSExportTests, JSExportPrototypeChain) {
   JSContext js_context = js_context_group.CreateContext();
   JSObject global_object = js_context.get_global_object();
