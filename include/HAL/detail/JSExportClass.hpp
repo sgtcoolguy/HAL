@@ -32,6 +32,7 @@
 #include <utility>
 #include <typeinfo>
 #include <typeindex>
+#include <unordered_map>
 
 namespace HAL {
   template<typename T>
@@ -117,6 +118,7 @@ namespace HAL { namespace detail {
     static std::string GetJSExportComponentName(const std::string& function_name, const std::string& location = "");
     
     static JSExportClassDefinition<T> js_export_class_definition__;
+    static std::unordered_map<std::string, JSValue> constants_cache__;
     
 #undef HAL_DETAIL_JSEXPORTCLASS_LOCK_GUARD_STATIC
 #ifdef HAL_THREAD_SAFE
@@ -134,6 +136,9 @@ namespace HAL { namespace detail {
   
   template<typename T>
   JSExportClassDefinition<T> JSExportClass<T>::js_export_class_definition__;
+
+  template<typename T>
+  std::unordered_map<std::string, JSValue> JSExportClass<T>::constants_cache__;
   
   template<typename T>
   JSExportClass<T>::JSExportClass() HAL_NOEXCEPT {
@@ -225,11 +230,35 @@ namespace HAL { namespace detail {
     assert(callback_found);
     
     try {
-      const auto native_object_ptr = static_cast<const T*>(js_object.GetPrivate());
+
+      // check if it's a constant
+      const auto constant_position = js_export_class_definition__.named_constants__.find(property_name);
+      const bool constant_found    = constant_position != js_export_class_definition__.named_constants__.end();
+      if (constant_found) {
+
+        HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::GetNamedProperty: constant found = ", constant_found, " for ", to_string(js_object), ".", property_name);
+
+        // check if it's cached
+        const auto cache_position = constants_cache__.find(property_name);
+        const bool cache_found    = cache_position != constants_cache__.end();
+
+        // if it's cached, we just use it
+        if (cache_found) {
+          HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::GetNamedProperty: constant cache found = ", constant_found, " for ", to_string(js_object), ".", property_name);
+          return static_cast<JSValueRef>(constants_cache__.at(property_name));
+        } 
+      }
+
+      auto native_object_ptr = static_cast<T*>(js_object.GetPrivate());
       const auto callback          = (callback_position -> second).get_callback();
       const auto result            = callback(*native_object_ptr);
       
       HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::GetNamedProperty: result = ", to_string(result), " for ", to_string(js_object), ".", property_name);
+
+      // make sure to cache the result if it's a constant
+      if (constant_found) {
+        constants_cache__.emplace(property_name, result);
+      }
       
       return static_cast<JSValueRef>(result);
 
@@ -444,7 +473,7 @@ namespace HAL { namespace detail {
     auto       callback       = js_export_class_definition__.get_property_callback__;
     const bool callback_found = callback != nullptr;
     
-    const auto native_object_ptr = static_cast<const T*>(js_object.GetPrivate());
+    auto native_object_ptr = static_cast<T*>(js_object.GetPrivate());
     HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::GetProperty: callback found = ", callback_found, " for this[", native_object_ptr, "].", static_cast<std::string>(property_name));
     
     // precondition

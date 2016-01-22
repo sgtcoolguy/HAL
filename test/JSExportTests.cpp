@@ -65,7 +65,7 @@ TEST_F(JSExportTests, JSExportClassDefinitionBuilder) {
   builder
       .AddValueProperty("name", std::mem_fn(&Widget::js_get_name), std::mem_fn(&Widget::js_set_name))
       .AddValueProperty("number", std::mem_fn(&Widget::js_get_number), std::mem_fn(&Widget::js_set_number))
-      .AddValueProperty("pi", std::mem_fn(&Widget::js_get_pi))
+      .AddConstantProperty("pi", std::mem_fn(&Widget::js_get_pi))
       .AddFunctionProperty("sayhello", std::mem_fn(&Widget::js_sayHello))
   // .Function(&Widget::CallAsFunction)
   // .ConvertType(&Widget::ConvertToType);
@@ -94,6 +94,10 @@ TEST_F(JSExportTests, JSExport) {
   result = js_context.JSEvaluateScript("Widget.name;");
   XCTAssertTrue(result.IsString());
   XCTAssertEqual("world", static_cast<std::string>(result));
+
+  result = js_context.JSEvaluateScript("Widget.pi;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(3.141592653589793, static_cast<double>(result));
 
   result = js_context.JSEvaluateScript("Widget.sayHello();");
   XCTAssertTrue(result.IsString());
@@ -143,6 +147,13 @@ TEST_F(JSExportTests, JSExport) {
   result = js_context.JSEvaluateScript("var widget = new Widget('baz', 999); widget.sayHello();");
   XCTAssertTrue(result.IsString());
   XCTAssertEqual("Hello, baz. Your number is 999.", static_cast<std::string>(result));
+
+  // test constant cache
+  XCTAssertEqual(1, widget_ptr->get_count_for_pi());
+  result = js_context.JSEvaluateScript("Widget.pi;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(3.141592653589793, static_cast<double>(result));
+  XCTAssertEqual(1, widget_ptr->get_count_for_pi());
 
   // FIXME
   auto string_ptr = widget.GetPrivate<std::string>();

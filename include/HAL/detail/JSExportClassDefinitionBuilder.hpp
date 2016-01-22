@@ -258,6 +258,59 @@ namespace HAL { namespace detail {
       AddValuePropertyCallback(JSExportNamedValuePropertyCallback<T>(property_name, get_callback, set_callback, attributes));
       return *this;
     }
+
+    /*!
+     @method
+     
+     @abstract Add callbacks to invoke when getting a constant property
+     on your JavaScript object. The getter callback will be called only once
+     because constant is cached and reused.
+
+     The property will always have the 'DontDelete' and 'ReadOnly' attribute.
+     By default the property is enumerable unless you specify otherwise.
+     
+     @discussion For example, given this class definition:
+     
+     class Foo {
+     JSValue GetName() const;
+     bool SetName(JSValue& value);
+     };
+     
+     You would call the builer like this:
+     
+     JSExportClassDefinitionBuilder<Foo> builder("Foo");
+     builder.AddConstantProperty("name", &Foo::GetName);
+     
+     If you wanted the property non-enumerable, then you would call the
+     builder like this:
+     
+     builder.AddValueProperty("name", &Foo::GetName, false);
+     
+     @param property_name A JSString containing the property's name.
+     
+     @param get_callback The callback to invoke when getting a
+     property's value from your JavaScript object. Note that this callback
+     will be called only once, because constant value will be cached.
+     
+     @param enumerable An optional property attribute that specifies
+     whether the property is enumerable. The default value is true,
+     which means the property is enumerable.
+     
+     @throws std::invalid_argument exception under these preconditions:
+     
+     1. If property_name is empty.
+     
+     2. If get_callback are missing.
+     
+     @result A reference to the builder for chaining.
+     */
+    JSExportClassDefinitionBuilder<T>& AddConstantProperty(const JSString& property_name, GetNamedValuePropertyCallback<T> get_callback, bool enumerable = true) {
+      std::unordered_set<JSPropertyAttribute> attributes { JSPropertyAttribute::DontDelete, JSPropertyAttribute::ReadOnly };
+      static_cast<void>(!enumerable   && attributes.insert(JSPropertyAttribute::DontEnum).second);
+      HAL_DETAIL_JSEXPORTCLASSDEFINITIONBUILDER_LOCK_GUARD;
+      AddConstantPropertyCallback(JSExportNamedValuePropertyCallback<T>(property_name, get_callback, nullptr, attributes));
+      return *this;
+    }   
     
     /*!
      @method
@@ -638,6 +691,7 @@ namespace HAL { namespace detail {
     
   private:
     
+    void AddConstantPropertyCallback(const JSExportNamedValuePropertyCallback<T>& value_property_callback);
     void AddValuePropertyCallback(const JSExportNamedValuePropertyCallback<T>& value_property_callback);
     void AddFunctionPropertyCallback(const JSExportNamedFunctionPropertyCallback<T>& function_property_callback);
     
@@ -649,6 +703,7 @@ namespace HAL { namespace detail {
     ::JSClassDefinition                           js_class_definition__;
     std::string                                   name__;
     JSClass                                       parent__;
+    std::unordered_set<std::string>               named_constants__;
     JSExportNamedValuePropertyCallbackMap_t<T>    named_value_property_callback_map__;
     JSExportNamedFunctionPropertyCallbackMap_t<T> named_function_property_callback_map__;
     HasPropertyCallback<T>                        has_property_callback__        { nullptr };
@@ -658,10 +713,30 @@ namespace HAL { namespace detail {
     GetPropertyNamesCallback<T>                   get_property_names_callback__  { nullptr };
     CallAsFunctionCallback<T>                     call_as_function_callback__    { nullptr };
     ConvertToTypeCallback<T>                      convert_to_type_callback__     { nullptr };
-    
+
     HAL_DETAIL_JSEXPORTCLASSDEFINITIONBUILDER_MUTEX;
   };
-  
+
+  template<typename T>
+  void JSExportClassDefinitionBuilder<T>::AddConstantPropertyCallback(const JSExportNamedValuePropertyCallback<T>& value_property_callback) {
+    const std::string internal_component_name = "JSExportClassDefinitionBuilder<" + name__ + ">::AddConstantPropertyCallback";
+    const auto property_name                  = value_property_callback.get_name();
+    const auto position                       = named_constants__.find(property_name);
+    const bool found                          = position != named_constants__.end();
+    
+    if (found) {
+      const std::string message = "Constant property " + property_name + " already added";
+      ThrowInvalidArgument(internal_component_name, message);
+    }
+    
+    const auto callback_insert_result = named_constants__.emplace(property_name);
+    const bool callback_inserted      = callback_insert_result.second;
+    
+    assert(callback_inserted);
+
+    AddValuePropertyCallback(value_property_callback);
+  } 
+
   template<typename T>
   void JSExportClassDefinitionBuilder<T>::AddValuePropertyCallback(const JSExportNamedValuePropertyCallback<T>& value_property_callback) {
     const std::string internal_component_name = "JSExportClassDefinitionBuilder<" + name__ + ">::AddValuePropertyCallback";
@@ -746,6 +821,7 @@ namespace HAL { namespace detail {
   template<typename T>
   JSExportClassDefinition<T>::JSExportClassDefinition(const JSExportClassDefinitionBuilder<T>& builder)
   : JSClassDefinition(builder.js_class_definition__)
+  , named_constants__(builder.named_constants__)
   , named_value_property_callback_map__(builder.named_value_property_callback_map__)
   , named_function_property_callback_map__(builder.named_function_property_callback_map__)
   , has_property_callback__(builder.has_property_callback__)

@@ -44,7 +44,7 @@ namespace HAL { namespace detail {
    @result Return the named property's value.
    */
   template<typename T>
-  using GetNamedValuePropertyCallback = std::function<JSValue(const T&)>;
+  using GetNamedValuePropertyCallback = std::function<JSValue(T&)>;
   
   /*!
    @typedef SetNamedValuePropertyCallback
@@ -188,7 +188,7 @@ namespace HAL { namespace detail {
    prototype chain.
    */
   template<typename T>
-  using GetPropertyCallback = std::function<JSValue(const T&, const JSString&)>;
+  using GetPropertyCallback = std::function<JSValue(T&, const JSString&)>;
   
   /*!
    @typedef SetPropertyCallback
@@ -306,7 +306,7 @@ namespace HAL { namespace detail {
    @result void
    */
   template<typename T>
-  using GetPropertyNamesCallback = std::function<void(const T&, JSPropertyNameAccumulator&)>;
+  using GetPropertyNamesCallback = std::function<void(T&, JSPropertyNameAccumulator&)>;
   
   /*!
    @typedef CallAsFunctionCallback

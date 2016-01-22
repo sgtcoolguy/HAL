@@ -67,6 +67,7 @@ namespace HAL { namespace detail {
     template<typename U>
     friend class JSExportClass;
     
+    std::unordered_set<std::string>               named_constants__;
     JSExportNamedValuePropertyCallbackMap_t<T>    named_value_property_callback_map__;
     JSExportNamedFunctionPropertyCallbackMap_t<T> named_function_property_callback_map__;
     HasPropertyCallback<T>                        has_property_callback__        { nullptr };
@@ -81,6 +82,7 @@ namespace HAL { namespace detail {
   template<typename T>
   JSExportClassDefinition<T>::JSExportClassDefinition(const JSExportClassDefinition<T>& rhs) HAL_NOEXCEPT
   : JSClassDefinition(rhs)
+  , named_constants__(rhs.named_constants__)
   , named_value_property_callback_map__(rhs.named_value_property_callback_map__)
   , named_function_property_callback_map__(rhs.named_function_property_callback_map__)
   , has_property_callback__(rhs.has_property_callback__)
@@ -99,6 +101,7 @@ namespace HAL { namespace detail {
   template<typename T>
   JSExportClassDefinition<T>::JSExportClassDefinition(JSExportClassDefinition<T>&& rhs) HAL_NOEXCEPT
   : JSClassDefinition(rhs)
+  , named_constants__(std::move(rhs.named_constants__))
   , named_value_property_callback_map__(std::move(rhs.named_value_property_callback_map__))
   , named_function_property_callback_map__(std::move(rhs.named_function_property_callback_map__))
   , has_property_callback__(std::move(rhs.has_property_callback__))
@@ -118,6 +121,7 @@ namespace HAL { namespace detail {
   JSExportClassDefinition<T>& JSExportClassDefinition<T>::operator=(const JSExportClassDefinition<T>& rhs) HAL_NOEXCEPT {
     HAL_JSCLASSDEFINITION_LOCK_GUARD;
     JSClassDefinition::operator=(rhs);
+    named_constants__                      = rhs.named_constants__;
     named_value_property_callback_map__    = rhs.named_value_property_callback_map__;
     named_function_property_callback_map__ = rhs.named_function_property_callback_map__;
     has_property_callback__                = rhs.has_property_callback__;
@@ -155,6 +159,7 @@ namespace HAL { namespace detail {
       
       // By swapping the members of two classes, the two classes are
       // effectively swapped.
+      swap(named_constants__                     , other.named_constants__);
       swap(named_value_property_callback_map__   , other.named_value_property_callback_map__);
       swap(named_function_property_callback_map__, other.named_function_property_callback_map__);
       swap(has_property_callback__               , other.has_property_callback__);
