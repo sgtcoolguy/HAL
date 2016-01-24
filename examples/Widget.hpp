@@ -11,6 +11,7 @@
 
 #include "HAL/HAL.hpp"
 #include <string>
+#include <unordered_map>
 
 using namespace HAL;
 
@@ -53,6 +54,10 @@ public:
   std::string testMemberObjectProperty() const HAL_NOEXCEPT;
   std::string testMemberArrayProperty()  const HAL_NOEXCEPT;
   std::string testCallAsFunction(JSObject& this_object)       HAL_NOEXCEPT;
+
+  std::uint32_t get_count_for_pi() {
+    return count_for_pi__;
+  }
   
   virtual ~Widget()                HAL_NOEXCEPT;
   Widget(const Widget&)            HAL_NOEXCEPT;
@@ -81,7 +86,8 @@ public:
   JSValue js_get_number() const                HAL_NOEXCEPT;
   bool    js_set_number(const JSValue& number) HAL_NOEXCEPT;
   
-  JSValue js_get_pi() const;
+  // Remove "const" to test lazy loading
+  JSValue js_get_pi() HAL_NOEXCEPT;
   
   JSValue js_get_value() const                HAL_NOEXCEPT;
   bool    js_set_value(const JSValue& value) HAL_NOEXCEPT;
@@ -127,6 +133,7 @@ private:
   JSRegExp   jsregexp__;
   JSObject   hello_callback__;
 
+  std::uint32_t count_for_pi__ { 0 };
 };
 
 inline

@@ -35,9 +35,13 @@ public:
   
   JSValue js_get_name() const HAL_NOEXCEPT;
   JSValue js_get_my_name() const HAL_NOEXCEPT;
+  JSValue js_get_pi() HAL_NOEXCEPT;
   
+  std::uint32_t get_count_for_child_pi() {
+    return count_for_child_pi__;
+  }
 private:
-
+  std::uint32_t count_for_child_pi__ { 0 };
 };
 
 inline

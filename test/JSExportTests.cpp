@@ -65,7 +65,7 @@ TEST_F(JSExportTests, JSExportClassDefinitionBuilder) {
   builder
       .AddValueProperty("name", std::mem_fn(&Widget::js_get_name), std::mem_fn(&Widget::js_set_name))
       .AddValueProperty("number", std::mem_fn(&Widget::js_get_number), std::mem_fn(&Widget::js_set_number))
-      .AddValueProperty("pi", std::mem_fn(&Widget::js_get_pi))
+      .AddConstantProperty("pi", std::mem_fn(&Widget::js_get_pi))
       .AddFunctionProperty("sayhello", std::mem_fn(&Widget::js_sayHello))
   // .Function(&Widget::CallAsFunction)
   // .ConvertType(&Widget::ConvertToType);
@@ -94,6 +94,10 @@ TEST_F(JSExportTests, JSExport) {
   result = js_context.JSEvaluateScript("Widget.name;");
   XCTAssertTrue(result.IsString());
   XCTAssertEqual("world", static_cast<std::string>(result));
+
+  result = js_context.JSEvaluateScript("Widget.pi;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(3.141592653589793, static_cast<double>(result));
 
   result = js_context.JSEvaluateScript("Widget.sayHello();");
   XCTAssertTrue(result.IsString());
@@ -144,9 +148,44 @@ TEST_F(JSExportTests, JSExport) {
   XCTAssertTrue(result.IsString());
   XCTAssertEqual("Hello, baz. Your number is 999.", static_cast<std::string>(result));
 
+  // test constant cache
+  XCTAssertEqual(1, widget_ptr->get_count_for_pi());
+  result = js_context.JSEvaluateScript("Widget.pi;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(3.141592653589793, static_cast<double>(result));
+  XCTAssertEqual(1, widget_ptr->get_count_for_pi());
+
   // FIXME
   auto string_ptr = widget.GetPrivate<std::string>();
   //XCTAssertEqual(nullptr, string_ptr);
+}
+
+TEST_F(JSExportTests, JSExportConstantChain) {
+  JSContext js_context = js_context_group.CreateContext();
+  JSObject global_object = js_context.get_global_object();
+  
+  XCTAssertFalse(global_object.HasProperty("ChildWidget"));
+  JSObject widget = js_context.CreateObject(JSExport<ChildWidget>::Class());
+  global_object.SetProperty("ChildWidget", widget);
+  XCTAssertTrue(global_object.HasProperty("ChildWidget"));
+  
+  // check if child widget properly override the constant
+  auto result = js_context.JSEvaluateScript("ChildWidget.pi;");
+  XCTAssertTrue(result.IsString());
+  XCTAssertEqual("hello pi", static_cast<std::string>(result));
+
+  auto widget_ptr = widget.GetPrivate<ChildWidget>();
+  // check if parent callback is never called
+  XCTAssertEqual(0, widget_ptr->get_count_for_pi());
+
+  // check if child callback is called once
+  XCTAssertEqual(1, widget_ptr->get_count_for_child_pi());
+
+  // check if it's properly cached
+  result = js_context.JSEvaluateScript("ChildWidget.pi;");
+  XCTAssertTrue(result.IsString());
+  XCTAssertEqual("hello pi", static_cast<std::string>(result));
+  XCTAssertEqual(1, widget_ptr->get_count_for_child_pi());
 }
 
 TEST_F(JSExportTests, JSExportPrototypeChain) {

@@ -213,7 +213,43 @@ namespace HAL {
                                  detail::GetNamedValuePropertyCallback<T> get_callback,
                                  detail::SetNamedValuePropertyCallback<T> set_callback = nullptr,
                                  bool enumerable = true);
-    
+
+    /*!
+     @method
+     
+     @abstract Add a function property to your JavaScript object with
+     the 'DontDelete' and 'ReadOnly' attributes. By default the
+     property is enumerable unless you specify otherwise.
+     
+     @discussion For example, given this class definition:
+     
+     class Foo {
+     JSValue Hello(const std::vector<JSValue>& arguments);
+     };
+     
+     You would call the builer like this:
+     
+     JSExportClassDefinitionBuilder<Foo> builder("Foo");
+     builder.AddFunctionProperty("hello", &Foo::Hello);
+     
+     @param function_name A JSString containing the function's name.
+     
+     @param enumerable An optional property attribute that specifies
+     whether the property is enumerable. The default value is true,
+     which means the property is enumerable.
+     
+     @throws std::invalid_argument exception under these preconditions:
+     
+     1. If function_name is empty.
+     
+     2. If function_callback is not provided.
+     
+     @result A reference to the builder for chaining.
+     */
+    static void AddConstantProperty(const JSString& property_name,
+                                 detail::GetNamedValuePropertyCallback<T> get_callback,
+                                 bool enumerable = true);
+     
     /*!
      @method
      
@@ -523,6 +559,11 @@ namespace HAL {
   template<typename T>
   void JSExport<T>::AddValueProperty(const JSString& property_name, detail::GetNamedValuePropertyCallback<T> get_callback, detail::SetNamedValuePropertyCallback<T> set_callback, bool enumerable) {
     builder__.AddValueProperty(property_name, get_callback, set_callback);
+  }
+
+  template<typename T>
+  void JSExport<T>::AddConstantProperty(const JSString& property_name, detail::GetNamedValuePropertyCallback<T> get_callback, bool enumerable) {
+    builder__.AddConstantProperty(property_name, get_callback, enumerable);
   }
   
   template<typename T>
