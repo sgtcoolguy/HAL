@@ -1341,3 +1341,80 @@ TEST_F(JSExportTests, JSON_stringify) {
   // Circular reference should throw exception
   ASSERT_THROW(js_context.JSEvaluateScript("widget.value.parent = widget; JSON.stringify(widget);"), std::runtime_error);
 }
+
+TEST_F(JSExportTests, LRUCache) {
+  auto js_context = js_context_group.CreateContext();
+  auto global_object = js_context.get_global_object();
+
+  auto widgetClass = JSExport<OtherWidget>::Class();
+  auto otherWidget = js_context.CreateObject(widgetClass);
+  
+  // Cache only 3 entries for testing. Note that this also cleans cache
+  HAL::detail::JSExportClass<OtherWidget>::ResizeCache(3);
+  auto keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+
+  XCTAssertTrue(keys.empty());
+
+  global_object.SetProperty("Widget", otherWidget);
+
+  auto result = js_context.JSEvaluateScript("Widget.CONST1;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(1, static_cast<std::uint32_t>(result));
+
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertEqual(1, keys.size());
+  XCTAssertEqual("CONST1", keys.at(0));
+
+  result = js_context.JSEvaluateScript("Widget.CONST2;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(2, static_cast<std::uint32_t>(result));
+
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertEqual(2, keys.size());
+  XCTAssertEqual("CONST2", keys.at(0));
+  XCTAssertEqual("CONST1", keys.at(1));
+
+  result = js_context.JSEvaluateScript("Widget.CONST3;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(3, static_cast<std::uint32_t>(result));
+
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertEqual(3, keys.size());
+  XCTAssertEqual("CONST3", keys.at(0));
+  XCTAssertEqual("CONST2", keys.at(1));
+  XCTAssertEqual("CONST1", keys.at(2));
+
+  result = js_context.JSEvaluateScript("Widget.CONST4;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(4, static_cast<std::uint32_t>(result));
+
+  // Make sure least-recently-used key is evicted.
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertEqual(3, keys.size());
+  XCTAssertEqual("CONST4", keys.at(0));
+  XCTAssertEqual("CONST3", keys.at(1));
+  XCTAssertEqual("CONST2", keys.at(2));
+
+  result = js_context.JSEvaluateScript("Widget.CONST3;");
+  XCTAssertTrue(result.IsNumber());
+  XCTAssertEqual(3, static_cast<std::uint32_t>(result));
+
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertEqual(3, keys.size());
+  XCTAssertEqual("CONST3", keys.at(0));
+  XCTAssertEqual("CONST4", keys.at(1));
+  XCTAssertEqual("CONST2", keys.at(2));
+
+  // evict least-recently used one
+  HAL::detail::JSExportClass<OtherWidget>::EvictCache();
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertEqual(2, keys.size());
+  XCTAssertEqual("CONST3", keys.at(0));
+  XCTAssertEqual("CONST4", keys.at(1));
+
+  // evict all
+  HAL::detail::JSExportClass<OtherWidget>::EvictAllCache();
+  keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
+  XCTAssertTrue(keys.empty());
+}
+

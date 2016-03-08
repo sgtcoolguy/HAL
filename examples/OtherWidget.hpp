@@ -61,6 +61,13 @@ public:
   virtual void postInitialize(JSObject& js_object) override;
   virtual void postCallAsConstructor(const JSContext& js_context, const std::vector<JSValue>& arguments) override;
 	
+  JSValue js_get_CONST1() HAL_NOEXCEPT;
+  JSValue js_get_CONST2() HAL_NOEXCEPT;
+  JSValue js_get_CONST3() HAL_NOEXCEPT;
+  JSValue js_get_CONST4() HAL_NOEXCEPT;
+  JSValue js_get_CONST5() HAL_NOEXCEPT;
+  JSValue js_get_CONST6() HAL_NOEXCEPT;
+
 private:
   
 };

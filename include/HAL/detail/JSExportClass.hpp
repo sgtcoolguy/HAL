@@ -33,6 +33,7 @@
 #include <typeinfo>
 #include <typeindex>
 #include <unordered_map>
+#include <list>
 
 namespace HAL {
   template<typename T>
@@ -75,10 +76,24 @@ namespace HAL { namespace detail {
     JSExportClass& operator=(JSExportClass&&)      = default;
 #endif
 
+    // Erase least-recently-used constant cache.
+    // Making this public only for testing porpose.
+    static void EvictCache();
+    
+    // Erase all constant cache
+    static void EvictAllCache();
+
+    //  Sets the size of the cache. Note that this clears all cache
+    static void ResizeCache(const std::uint32_t& maxSize);
+
+    // Returns cached constant names, sorted by Most-Recently-Used order.
+    // Making this public only for testing porpose.
+    static std::vector<std::string> GetCachedKeys();
+
   private:
     
     void Print() const;
-    
+
     // JSExportClassDefinitionBuilder needs access in order to take
     // the address of our non-static functions that implement the
     // JSExport callbacks.
@@ -119,6 +134,8 @@ namespace HAL { namespace detail {
     
     static JSExportClassDefinition<T> js_export_class_definition__;
     static std::unordered_map<std::string, JSValue> constants_cache__;
+    static std::list<std::string>                   constants_cache_history__;
+    static std::uint32_t                            constants_cache_capacity__;
     
 #undef HAL_DETAIL_JSEXPORTCLASS_LOCK_GUARD_STATIC
 #ifdef HAL_THREAD_SAFE
@@ -139,7 +156,17 @@ namespace HAL { namespace detail {
 
   template<typename T>
   std::unordered_map<std::string, JSValue> JSExportClass<T>::constants_cache__;
-  
+
+  template<typename T>
+  std::list<std::string> JSExportClass<T>::constants_cache_history__;
+
+  //
+  // Constants cache capacity
+  // Consider optimizing this based on memory consumption
+  //
+  template<typename T>
+  std::uint32_t JSExportClass<T>::constants_cache_capacity__ = 16;
+
   template<typename T>
   JSExportClass<T>::JSExportClass() HAL_NOEXCEPT {
     HAL_LOG_TRACE("JSExportClass<", typeid(T).name(), ">:: ctor 1 ", this);
@@ -215,6 +242,36 @@ namespace HAL { namespace detail {
   }
   
   template<typename T>
+  void JSExportClass<T>::EvictCache() {
+    assert(!constants_cache_history__.empty());
+    const auto least_cache_key = constants_cache_history__.front();
+    constants_cache_history__.pop_front();
+    constants_cache__.erase(least_cache_key);
+  }
+
+  template<typename T>
+  void JSExportClass<T>::EvictAllCache() {
+    constants_cache_history__.clear();
+    constants_cache__.clear();    
+  }
+
+  template<typename T>
+  void JSExportClass<T>::ResizeCache(const std::uint32_t& maxSize) {
+    constants_cache_history__.clear();
+    constants_cache__.clear();    
+    constants_cache_capacity__ = maxSize;
+  }
+
+  template<typename T>
+  std::vector<std::string> JSExportClass<T>::GetCachedKeys() {
+    std::vector<std::string> keys;
+    for (auto it = constants_cache_history__.rbegin(); it != constants_cache_history__.rend(); ++it) {
+      keys.push_back(*it);
+    }
+    return keys;
+  }
+
+  template<typename T>
   JSValueRef JSExportClass<T>::GetNamedValuePropertyCallback(JSContextRef context_ref, JSObjectRef object_ref, JSStringRef property_name_ref, JSValueRef* exception) try {
     
     JSObject js_object(JSObject::FindJSObject(context_ref, object_ref));
@@ -245,6 +302,14 @@ namespace HAL { namespace detail {
         // if it's cached, we just use it
         if (cache_found) {
           HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::GetNamedProperty: constant cache found = ", constant_found, " for ", to_string(js_object), ".", property_name);
+
+          //
+          // update LRU cache access history
+          //
+          const auto cache_history_position = std::find(constants_cache_history__.begin(), constants_cache_history__.end(), property_name);
+          assert(cache_history_position != constants_cache_history__.end());
+          constants_cache_history__.splice(constants_cache_history__.end(), constants_cache_history__, cache_history_position);
+
           return static_cast<JSValueRef>(constants_cache__.at(property_name));
         } 
       }
@@ -258,6 +323,23 @@ namespace HAL { namespace detail {
       // make sure to cache the result if it's a constant
       if (constant_found) {
         constants_cache__.emplace(property_name, result);
+
+        //
+        // create LRU cache access history
+        //
+        const auto cache_history_position = std::find(constants_cache_history__.begin(), constants_cache_history__.end(), property_name);
+        // make sure it's called only when cache misses
+        assert(cache_history_position == constants_cache_history__.end());
+        //
+        // check the capacity and evict when necessary
+        // this only caches up to constants_cache_capacity__ entries
+        // consider optimizing this based on memory consumption
+        //
+        if (constants_cache_history__.size() >= constants_cache_capacity__) {
+          EvictCache();
+        }
+
+        constants_cache_history__.insert(constants_cache_history__.end(), property_name);
       }
       
       return static_cast<JSValueRef>(result);
