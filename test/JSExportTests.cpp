@@ -1413,7 +1413,7 @@ TEST_F(JSExportTests, LRUCache) {
   XCTAssertEqual("CONST4", keys.at(1));
 
   // evict all
-  HAL::detail::JSExportClass<OtherWidget>::EvictAllCache();
+  JSExport<OtherWidget>::EvictAllCache();
   keys = HAL::detail::JSExportClass<OtherWidget>::GetCachedKeys();
   XCTAssertTrue(keys.empty());
 }
