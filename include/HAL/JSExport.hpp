@@ -117,6 +117,12 @@ namespace HAL {
      */
     static detail::JSExportClass<T> Class();
     
+    /*
+     @method
+     @abstract Erase all constant cache
+     */
+    static void EvictAllCache();
+ 
     virtual ~JSExport() HAL_NOEXCEPT {
     }
     
@@ -623,6 +629,10 @@ namespace HAL {
     return js_export_class;
   }
   
+  template<typename T>
+  void JSExport<T>::EvictAllCache() {
+    detail::JSExportClass<T>::EvictAllCache();
+  }
 } // namespace HAL {
 
 #endif // _HAL_JSEXPORT_HPP_

@@ -56,4 +56,36 @@ void OtherWidget::postCallAsConstructor(const JSContext& js_context, const std::
 void OtherWidget::JSExportInitialize() {
   JSExport<OtherWidget>::SetClassVersion(1);
   JSExport<OtherWidget>::SetParent(JSExport<JSExportObject>::Class());
+  JSExport<OtherWidget>::AddConstantProperty("CONST1", std::mem_fn(&OtherWidget::js_get_CONST1));
+  JSExport<OtherWidget>::AddConstantProperty("CONST2", std::mem_fn(&OtherWidget::js_get_CONST2));
+  JSExport<OtherWidget>::AddConstantProperty("CONST3", std::mem_fn(&OtherWidget::js_get_CONST3));
+  JSExport<OtherWidget>::AddConstantProperty("CONST4", std::mem_fn(&OtherWidget::js_get_CONST4));
+  JSExport<OtherWidget>::AddConstantProperty("CONST5", std::mem_fn(&OtherWidget::js_get_CONST5));
+  JSExport<OtherWidget>::AddConstantProperty("CONST6", std::mem_fn(&OtherWidget::js_get_CONST6));
+
 }
+
+JSValue OtherWidget::js_get_CONST1() HAL_NOEXCEPT {
+  return get_context().CreateNumber(1);
+}
+
+JSValue OtherWidget::js_get_CONST2() HAL_NOEXCEPT {
+  return get_context().CreateNumber(2);
+}
+
+JSValue OtherWidget::js_get_CONST3() HAL_NOEXCEPT {
+  return get_context().CreateNumber(3);
+}
+
+JSValue OtherWidget::js_get_CONST4() HAL_NOEXCEPT {
+  return get_context().CreateNumber(4);
+}
+
+JSValue OtherWidget::js_get_CONST5() HAL_NOEXCEPT {
+  return get_context().CreateNumber(5);
+}
+
+JSValue OtherWidget::js_get_CONST6() HAL_NOEXCEPT {
+  return get_context().CreateNumber(6);
+}
+
