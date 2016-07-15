@@ -32,33 +32,41 @@ namespace HAL {
   : js_context_group_ref__(js_context_group_ref) {
     HAL_LOG_TRACE("JSContextGroup:: ctor 2 ", this);
     assert(js_context_group_ref__);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContextGroup:: retain ", js_context_group_ref__, " for ", this);
     JSContextGroupRetain(js_context_group_ref__);
     managed__ = true;
+#endif
   }
   
   JSContextGroup::~JSContextGroup() HAL_NOEXCEPT {
     HAL_LOG_TRACE("JSContextGroup:: dtor ", this);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContextGroup:: release ", js_context_group_ref__, " for ", this);
     if (managed__) {
       JSContextGroupRelease(js_context_group_ref__);
     }
+#endif
   }
   
   JSContextGroup::JSContextGroup(const JSContextGroup& rhs) HAL_NOEXCEPT
   : js_context_group_ref__(rhs.js_context_group_ref__) {
     HAL_LOG_TRACE("JSContextGroup:: copy ctor ", this);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContextGroup:: retain ", js_context_group_ref__, " for ", this);
     JSContextGroupRetain(js_context_group_ref__);
     managed__ = true;
+#endif
   }
   
   JSContextGroup::JSContextGroup(JSContextGroup&& rhs) HAL_NOEXCEPT
   : js_context_group_ref__(rhs.js_context_group_ref__) {
     HAL_LOG_TRACE("JSContextGroup:: move ctor ", this);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContextGroup:: retain ", js_context_group_ref__, " for ", this);
     JSContextGroupRetain(js_context_group_ref__);
     managed__ = true;
+#endif
   }
   
   JSContextGroup& JSContextGroup::operator=(JSContextGroup rhs) HAL_NOEXCEPT {

@@ -259,24 +259,30 @@ namespace HAL {
   
   JSContext::~JSContext() HAL_NOEXCEPT {
     HAL_LOG_TRACE("JSContext:: dtor ", this);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContext:: release ", js_global_context_ref__, " for ", this);
     JSGlobalContextRelease(js_global_context_ref__);
+#endif
   }
   
   JSContext::JSContext(const JSContext& rhs) HAL_NOEXCEPT
   : js_context_group__(rhs.js_context_group__)
   , js_global_context_ref__(rhs.js_global_context_ref__) {
     HAL_LOG_TRACE("JSContext:: copy ctor ", this);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContext:: retain ", js_global_context_ref__, " for ", this);
     JSGlobalContextRetain(js_global_context_ref__);
+#endif
   }
   
   JSContext::JSContext(JSContext&& rhs) HAL_NOEXCEPT
   : js_context_group__(std::move(rhs.js_context_group__))
   , js_global_context_ref__(rhs.js_global_context_ref__) {
     HAL_LOG_TRACE("JSContext:: move ctor ", this);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContext:: retain ", js_global_context_ref__, " for ", this);
     JSGlobalContextRetain(js_global_context_ref__);
+#endif
   }
   
   JSContext& JSContext::operator=(JSContext rhs) HAL_NOEXCEPT {
@@ -314,8 +320,10 @@ namespace HAL {
   , js_global_context_ref__(js_global_context_ref) {
     HAL_LOG_TRACE("JSContext:: ctor 2 ", this);
     assert(js_global_context_ref__);
+#ifndef HAL_USE_SINGLE_CONTEXT
     HAL_LOG_TRACE("JSContext:: retain ", js_global_context_ref__, " for ", this);
     JSGlobalContextRetain(js_global_context_ref__);
+#endif
   }
   
 } // namespace HAL {
