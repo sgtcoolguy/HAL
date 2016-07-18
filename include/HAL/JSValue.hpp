@@ -341,6 +341,9 @@ namespace HAL {
     
     HAL_EXPORT friend std::vector<JSValue>    detail::to_vector(const JSContext&, size_t, const JSValueRef[]);
     HAL_EXPORT friend std::vector<JSValueRef> detail::to_vector(const std::vector<JSValue>&);
+
+    void Protect();
+    void Unprotect();
     
   private:
     
@@ -357,6 +360,7 @@ namespace HAL {
 #pragma warning(push)
 #pragma warning(disable: 4251)
     JSValueRef js_value_ref__ { nullptr };
+    static std::unordered_map<std::intptr_t, std::size_t> js_value_retain_count_map__;
 #pragma warning(pop)
     
 #undef  HAL_JSVALUE_LOCK_GUARD

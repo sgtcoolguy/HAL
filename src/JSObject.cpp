@@ -215,7 +215,6 @@ namespace HAL {
   JSObject::~JSObject() HAL_NOEXCEPT {
     HAL_LOG_TRACE("JSObject:: dtor ", this);
     HAL_LOG_TRACE("JSObject:: release ", js_object_ref__, " for ", this);
-    JSValueUnprotect(static_cast<JSContextRef>(js_context__), js_object_ref__);
     UnRegisterJSContext(js_object_ref__);
   }
   
@@ -224,7 +223,6 @@ namespace HAL {
   , js_object_ref__(rhs.js_object_ref__) {
     HAL_LOG_TRACE("JSObject:: copy ctor ", this);
     HAL_LOG_TRACE("JSObject:: retain ", js_object_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_object_ref__);
     RegisterJSContext(static_cast<JSContextRef>(js_context__), js_object_ref__);
   }
   
@@ -233,7 +231,6 @@ namespace HAL {
   , js_object_ref__(rhs.js_object_ref__) {
     HAL_LOG_TRACE("JSObject:: move ctor ", this);
     HAL_LOG_TRACE("JSObject:: retain ", js_object_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_object_ref__);
     RegisterJSContext(static_cast<JSContextRef>(js_context__), js_object_ref__);
   }
   
@@ -266,7 +263,6 @@ namespace HAL {
   , js_object_ref__(JSObjectMake(static_cast<JSContextRef>(js_context), static_cast<JSClassRef>(js_class), private_data)) {
     HAL_LOG_TRACE("JSObject:: ctor 1 ", this);
     HAL_LOG_TRACE("JSObject:: retain ", js_object_ref__, " (implicit) for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_object_ref__);
     RegisterJSContext(static_cast<JSContextRef>(js_context__), js_object_ref__);
   }
 
@@ -276,7 +272,6 @@ namespace HAL {
   , js_object_ref__(js_object_ref) {
     HAL_LOG_TRACE("JSObject:: ctor 2 ", this);
     HAL_LOG_TRACE("JSObject:: retain ", js_object_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_object_ref__);
     RegisterJSContext(static_cast<JSContextRef>(js_context__), js_object_ref__);
   }
   
@@ -343,6 +338,7 @@ namespace HAL {
       
       HAL_LOG_DEBUG("JSObject::RegisterJSContext: JSObjectRef = ", js_object_ref, ", JSContextRef = ", js_context_ref, " count = ", std::get<1>(tuple));
     } else {
+      JSValueProtect(static_cast<JSContextRef>(js_context_ref), js_object_ref);
       const auto insert_result = js_object_ref_to_js_context_ref_map__.emplace(key, std::make_tuple(value, 1));
       const bool inserted      = insert_result.second;
       
@@ -365,6 +361,7 @@ namespace HAL {
       static_cast<void>(js_context_ref); // just meant to suppress "unused" compiler warning
       --std::get<1>(tuple);
       if (std::get<1>(tuple) == 0) {
+        JSValueUnprotect(static_cast<JSContextRef>(js_context_ref), js_object_ref);
         js_object_ref_to_js_context_ref_map__.erase(key);
       } else {
         js_object_ref_to_js_context_ref_map__[key] = tuple;
