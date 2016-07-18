@@ -32,7 +32,34 @@
 
 namespace HAL {
   
+  std::unordered_map<std::intptr_t, std::size_t> JSValue::js_value_retain_count_map__;
   
+  void JSValue::Protect()
+  {
+    const auto ptr = reinterpret_cast<std::intptr_t>(js_value_ref__);
+    const auto iter = js_value_retain_count_map__.find(ptr);
+    if (iter == js_value_retain_count_map__.end()) {
+      JSValueProtect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+      js_value_retain_count_map__.emplace(ptr, 1);
+    } else {
+      js_value_retain_count_map__[ptr] = ++iter->second;
+    }
+  }
+
+  void JSValue::Unprotect()
+  {
+    const auto ptr = reinterpret_cast<std::intptr_t>(js_value_ref__);
+    const auto iter = js_value_retain_count_map__.find(ptr);
+    assert(iter != js_value_retain_count_map__.end());
+    const auto count = --iter->second;
+    if (count == 0) {
+      JSValueUnprotect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+      js_value_retain_count_map__.erase(ptr);
+    } else {
+      js_value_retain_count_map__[ptr] = count;
+    }
+  }
+
   JSString JSValue::ToJSONString(unsigned indent) {
     HAL_JSVALUE_LOCK_GUARD;
     JSValueRef exception { nullptr };
@@ -214,7 +241,7 @@ namespace HAL {
   JSValue::~JSValue() HAL_NOEXCEPT {
     HAL_LOG_TRACE("JSValue:: dtor ", this);
     HAL_LOG_TRACE("JSValue:: release ", js_value_ref__, " for ", this);
-    JSValueUnprotect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+    Unprotect();
   }
   
   JSValue::JSValue(const JSValue& rhs) HAL_NOEXCEPT
@@ -223,7 +250,7 @@ namespace HAL {
   , is_native_nullptr__(rhs.is_native_nullptr__) {
     HAL_LOG_TRACE("JSValue:: copy ctor ", this);
     HAL_LOG_TRACE("JSValue:: retain ", js_value_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+    Protect();
   }
   
   JSValue::JSValue(JSValue&& rhs) HAL_NOEXCEPT
@@ -232,7 +259,7 @@ namespace HAL {
   , is_native_nullptr__(rhs.is_native_nullptr__){
     HAL_LOG_TRACE("JSValue:: move ctor ", this);
     HAL_LOG_TRACE("JSValue:: retain ", js_value_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+    Protect();
   }
   
   JSValue& JSValue::operator=(JSValue rhs) {
@@ -273,7 +300,7 @@ namespace HAL {
       js_value_ref__ = JSValueMakeString(static_cast<JSContextRef>(js_context__), static_cast<JSStringRef>(js_string));
     }
     HAL_LOG_TRACE("JSValue:: retain ", js_value_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+    Protect();
   }
 	
   // For interoperability with the JavaScriptCore C API.
@@ -283,7 +310,7 @@ namespace HAL {
     HAL_LOG_TRACE("JSValue:: ctor 2 ", this);
     assert(js_value_ref__);
     HAL_LOG_TRACE("JSValue:: retain ", js_value_ref__, " for ", this);
-    JSValueProtect(static_cast<JSContextRef>(js_context__), js_value_ref__);
+    Protect();
   }
   
   std::string to_string(const JSValue::Type& js_value_type) HAL_NOEXCEPT {
