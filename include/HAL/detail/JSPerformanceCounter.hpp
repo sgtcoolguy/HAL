@@ -69,7 +69,7 @@ namespace HAL { namespace detail {
     }
     
     // copy assignment operator
-    JSPerformanceCounter& operator=(const JSPerformanceCounter&& rhs) {
+    JSPerformanceCounter& operator=(const JSPerformanceCounter& rhs) {
       ++objects_copy_assigned_;
       return *this;
     }
