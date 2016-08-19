@@ -468,6 +468,14 @@ namespace HAL { namespace detail {
       JSObject js_object(JSObject::FindJSObject(context_ref, function_ref));
       *exception = static_cast<JSValueRef>(CreateJSError("CallNamedFunction", function_name, js_object, e));
       return nullptr;
+    } catch (const std::exception& e) {
+      JSObject js_object(JSObject::FindJSObject(context_ref, function_ref));
+      *exception = static_cast<JSValueRef>(CreateJSError("CallNamedFunction", js_object, function_name + ": " + e.what()));
+      return nullptr;
+    } catch (...) {
+      JSObject js_object(JSObject::FindJSObject(context_ref, function_ref));
+      *exception = static_cast<JSValueRef>(CreateJSError("CallNamedFunction", js_object, function_name + ": " + "unknown exception"));
+      return nullptr;
     }
 
   } catch (const std::exception& e) {
