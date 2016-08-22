@@ -514,7 +514,17 @@ TEST_F(JSObjectTests, JSFunctionCallback) {
   // testing NOOP function
   JSFunction noop_function = js_context.CreateFunction();
   XCTAssertTrue(noop_function(noop_function).IsUndefined());
-  
+
+  // test callback validity after copy source has destructed
+  JSFunction js_copy_function = js_context.CreateFunction();
+  {
+     JSFunction js_src_function = js_context.CreateFunction(callback);
+     js_copy_function = js_src_function;
+  }
+
+  // now js_src_function has destructed
+  global_object.SetProperty("testJSFunctionCallbackCopy", js_copy_function);
+  XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallbackCopy('JavaScript');")));
 }
 
 TEST_F(JSObjectTests, JSON_stringify) {

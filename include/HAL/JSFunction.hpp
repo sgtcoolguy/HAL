@@ -35,6 +35,8 @@ public:
     static void UnRegisterJSFunctionCallback(JSObjectRef js_object_ref);
     static JSFunctionCallback FindJSFunctionCallback(JSObjectRef js_object_ref);
 
+    JSFunction& operator=(const JSFunction &rhs);
+
     virtual ~JSFunction() HAL_NOEXCEPT;
 
 private:

@@ -112,6 +112,24 @@ JSObjectRef JSFunction::MakeFunction(const JSContext& js_context, const JSString
     return js_object_ref;
 }
 
+/**
+ * To keep the callback valid after the destruction of rhs,
+ * we must obtain a new JSObjectRef and register the callback with it.
+ * The rhs will unregister the callback with the original js_object_ref__ in destructor.
+ */
+JSFunction& JSFunction::operator=(const JSFunction &rhs) {
+    JSObject::operator=(rhs);
+    const auto &callback = FindJSFunctionCallback(js_object_ref__);
+    if (callback) {
+        JSValue name(js_context__, JSObjectGetProperty(static_cast<JSContextRef>(js_context__), js_object_ref__, static_cast<JSStringRef>(JSString("name")), nullptr));
+        std::string name_string = static_cast<std::string>(name);
+        UnRegisterJSContext(js_object_ref__);
+        js_object_ref__ = MakeFunction(js_context__, static_cast<JSString>(name), callback);
+        JSFunction::RegisterJSFunctionCallback(js_object_ref__, callback);
+    }
+    return *this;
+}
+
 JSFunction::~JSFunction() HAL_NOEXCEPT {
     JSFunction::UnRegisterJSFunctionCallback(js_object_ref__);
 }
