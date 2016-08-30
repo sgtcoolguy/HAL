@@ -338,13 +338,13 @@ namespace HAL {
       
       HAL_LOG_DEBUG("JSObject::RegisterJSContext: JSObjectRef = ", js_object_ref, ", JSContextRef = ", js_context_ref, " count = ", std::get<1>(tuple));
     } else {
-      JSValueProtect(static_cast<JSContextRef>(js_context_ref), js_object_ref);
       const auto insert_result = js_object_ref_to_js_context_ref_map__.emplace(key, std::make_tuple(value, 1));
       const bool inserted      = insert_result.second;
       
-      // postcondition
-      assert(inserted);
-      HAL_LOG_DEBUG("JSObject::RegisterJSContext: JSObjectRef = ", js_object_ref, ", JSContextRef = ", js_context_ref, " count = 1");
+      if (inserted) {
+        JSValueProtect(static_cast<JSContextRef>(js_context_ref), js_object_ref);
+        HAL_LOG_DEBUG("JSObject::RegisterJSContext: JSObjectRef = ", js_object_ref, ", JSContextRef = ", js_context_ref, " count = 1");
+      }
     }
   }
   
