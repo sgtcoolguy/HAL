@@ -26,6 +26,42 @@ JSFunction::JSFunction(const JSContext& js_context, const JSString& function_nam
         : JSObject(js_context, MakeFunction(js_context, function_name, callback)) {
 }
 
+JSFunction::JSFunction(const JSFunction& rhs) : JSObject(rhs) {
+    RetainCallbackAfterCopy();
+}
+
+JSFunction::JSFunction(JSFunction&& rhs) : JSObject(std::move(rhs)) {
+    RetainCallbackAfterCopy();
+}
+
+JSFunction& JSFunction::operator=(const JSFunction& rhs) {
+    JSObject::operator=(rhs);
+    RetainCallbackAfterCopy();
+    return *this;
+}
+
+JSFunction& JSFunction::operator=(JSFunction&& rhs) {
+    JSObject::operator=(std::move(rhs));
+    RetainCallbackAfterCopy();
+    return *this;
+}
+
+/**
+ * To keep the callback valid after the destruction of rhs,
+ * we must obtain a new JSObjectRef and register the callback with it.
+ * The rhs will unregister the callback with the original js_object_ref__ in destructor.
+ */
+void JSFunction::RetainCallbackAfterCopy() {
+    const auto &callback = FindJSFunctionCallback(js_object_ref__);
+    if (callback) {
+        JSValue name(js_context__, JSObjectGetProperty(static_cast<JSContextRef>(js_context__), js_object_ref__, static_cast<JSStringRef>(JSString("name")), nullptr));
+        std::string name_string = static_cast<std::string>(name);
+        UnRegisterJSContext(js_object_ref__);
+        js_object_ref__ = MakeFunction(js_context__, static_cast<JSString>(name), callback);
+        JSFunction::RegisterJSFunctionCallback(js_object_ref__, callback);
+    }
+}
+
 JSObjectRef JSFunction::MakeFunction(const JSContext& js_context, const JSString& body, const std::vector<JSString>& parameter_names, const JSString& func_name, const JSString& source_url, int starting_line_number) {
 
     JSString function_name = func_name;

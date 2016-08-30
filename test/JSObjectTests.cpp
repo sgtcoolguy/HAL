@@ -499,22 +499,70 @@ TEST_F(JSObjectTests, JSFunctionCallback) {
     return js_context.CreateString("Hello, "+static_cast<std::string>(arguments.at(0)));
   };
 
-  JSFunction js_function = js_context.CreateFunction(callback);
-
-  XCTAssertTrue(js_function.IsFunction());
-  XCTAssertEqual("Hello, world", static_cast<std::string>(js_function("world", js_function)));
-  XCTAssertFalse(js_function.IsArray());
-  XCTAssertFalse(js_function.IsError());
-  
   auto global_object = js_context.get_global_object();
-  global_object.SetProperty("testJSFunctionCallback", js_function);
+
+  {
+    JSFunction js_function = js_context.CreateFunction(callback);
+
+    XCTAssertTrue(js_function.IsFunction());
+    XCTAssertEqual("Hello, world", static_cast<std::string>(js_function("world", js_function)));
+    XCTAssertFalse(js_function.IsArray());
+    XCTAssertFalse(js_function.IsError());
+
+    global_object.SetProperty("testJSFunctionCallback", js_function);
+
+    XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallback('JavaScript');")));
+    global_object.DeleteProperty("testJSFunctionCallback");
+  }
+
+  // test callback validity after copy source has destructed
+  // copy assignment
+  {
+    JSFunction js_function_copy_assigned = js_context.CreateFunction();
+    {
+      JSFunction js_src_function = js_context.CreateFunction(callback);
+      js_function_copy_assigned = js_src_function;
+    }
+
+    // now js_src_function has destructed
+    global_object.SetProperty("testJSFunctionCallback", js_function_copy_assigned);
+    XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallback('JavaScript');")));
+    global_object.DeleteProperty("testJSFunctionCallback");
+  }
+
+  // move assignment
+  {
+    JSFunction js_function_move_assigned = js_context.CreateFunction();
   
-  XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallback('JavaScript');")));
+    js_function_move_assigned = std::move(js_context.CreateFunction(callback));
+
+    global_object.SetProperty("testJSFunctionCallback", js_function_move_assigned);
+    XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallback('JavaScript');")));
+    global_object.DeleteProperty("testJSFunctionCallback");
+  }
+
+  // copy construction
+  {
+    JSFunction js_src_function = js_context.CreateFunction(callback);
+    JSFunction js_function_copy_constructed(js_src_function);
+
+    global_object.SetProperty("testJSFunctionCallback", js_function_copy_constructed);
+    XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallback('JavaScript');")));
+    global_object.DeleteProperty("testJSFunctionCallback");
+  }
+
+  // move construction
+  {
+    JSFunction js_function_move_constructed = std::move(js_context.CreateFunction(callback));
+
+    global_object.SetProperty("testJSFunctionCallback", js_function_move_constructed);
+    XCTAssertEqual("Hello, JavaScript", static_cast<std::string>(js_context.JSEvaluateScript("testJSFunctionCallback('JavaScript');")));
+    global_object.DeleteProperty("testJSFunctionCallback");
+  }
 
   // testing NOOP function
   JSFunction noop_function = js_context.CreateFunction();
   XCTAssertTrue(noop_function(noop_function).IsUndefined());
-  
 }
 
 TEST_F(JSObjectTests, JSON_stringify) {

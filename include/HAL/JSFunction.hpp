@@ -35,6 +35,11 @@ public:
     static void UnRegisterJSFunctionCallback(JSObjectRef js_object_ref);
     static JSFunctionCallback FindJSFunctionCallback(JSObjectRef js_object_ref);
 
+    JSFunction(const JSFunction& rhs);
+    JSFunction(JSFunction&& rhs);
+    JSFunction& operator=(const JSFunction& rhs);
+    JSFunction& operator=(JSFunction&& rhs);
+
     virtual ~JSFunction() HAL_NOEXCEPT;
 
 private:
@@ -49,6 +54,8 @@ private:
 
     static JSValueRef  JSObjectCallAsFunctionCallback(JSContextRef context_ref, JSObjectRef function_ref, JSObjectRef this_object_ref, size_t argument_count, const JSValueRef arguments_array[], JSValueRef* exception);
     static JSObjectRef MakeFunction(const JSContext& js_context, const JSString& function_name, const JSFunctionCallback& callback);
+
+    void RetainCallbackAfterCopy();
 
     // Silence 4251 on Windows since private member variables do not
     // need to be exported from a DLL.
