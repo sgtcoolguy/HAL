@@ -743,6 +743,8 @@ namespace HAL { namespace detail {
     const auto native_object_ptr = static_cast<T*>(new_object.GetPrivate());
     HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::CallAsConstructor: for this[", native_object_ptr, "]");
 
+    new_object.SetProperty("constructor", js_object);
+
     native_object_ptr->postCallAsConstructor(js_context, to_vector(js_context, argument_count, arguments_array));
 
     return static_cast<JSObjectRef>(new_object);

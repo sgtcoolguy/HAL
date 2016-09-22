@@ -59,8 +59,8 @@ TEST_F(JSContextTests, TIMOB_18855) {
   JSValue js_value = js_context.JSEvaluateScript("new Date().getTime() - start;");
   XCTAssertFalse(static_cast<std::int32_t>(js_value) == 1);
   XCTAssertTrue(static_cast<std::int32_t>(js_value) >  999);
-  // assuming JS evaluation is done within 500 msec...
-  XCTAssertTrue(static_cast<std::int32_t>(js_value) < 1500);
+  // assuming JS evaluation is done within 1000 msec...
+  XCTAssertTrue(static_cast<std::int32_t>(js_value) < 2000);
 }
 
 TEST_F(JSContextTests, JSEvaluateScriptWithError) {

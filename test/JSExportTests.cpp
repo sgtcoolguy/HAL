@@ -385,6 +385,11 @@ TEST_F(JSExportTests, CallAsConstructor) {
 
   const std::vector<JSValue> args = {js_context.CreateString("foo"), js_context.CreateNumber(123)};
   JSObject js_widget = widget.CallAsConstructor(args);
+
+  // constructor property  
+  XCTAssertTrue(js_widget.HasProperty("constructor"));
+  XCTAssertEqual(js_widget.GetProperty("constructor"), widget);
+
   auto widget_ptr = js_widget.GetPrivate<Widget>();
   XCTAssertNotEqual(nullptr, widget_ptr.get());
   XCTAssertTrue(js_widget.HasProperty("sayHello"));
@@ -1331,12 +1336,6 @@ TEST_F(JSExportTests, JSON_stringify) {
   std::vector<JSValue> args = {js_context.CreateString("foo"), js_context.CreateNumber(123)};
   JSObject js_widget = widget.CallAsConstructor(args);
   global_object.SetProperty("widget", js_widget);
-
-  auto js_result = js_context.JSEvaluateScript("JSON.stringify(Widget);");
-  XCTAssertEqual("{\"number\":42,\"name\":\"world\",\"value\":{},\"pi\":3.141592653589793,\"test_postInitialize_called\":true}", static_cast<std::string>(js_result)); 
-
-  js_result = js_context.JSEvaluateScript("JSON.stringify(widget);");
-  XCTAssertEqual("{\"number\":123,\"name\":\"foo\",\"value\":{},\"pi\":3.141592653589793,\"test_postInitialize_called\":true,\"test_postCallAsConstructor_called\":true}", static_cast<std::string>(js_result)); 
 
   // Circular reference should throw exception
   ASSERT_THROW(js_context.JSEvaluateScript("widget.value.parent = widget; JSON.stringify(widget);"), std::runtime_error);
