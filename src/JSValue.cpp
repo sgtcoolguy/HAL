@@ -60,7 +60,7 @@ namespace HAL {
     }
   }
 
-  JSString JSValue::ToJSONString(unsigned indent) {
+  JSString JSValue::ToJSONString(unsigned indent) const {
     HAL_JSVALUE_LOCK_GUARD;
     JSValueRef exception { nullptr };
     JSStringRef js_string_ref = JSValueCreateJSONString(static_cast<JSContextRef>(js_context__), js_value_ref__, indent, &exception);

@@ -89,7 +89,7 @@ namespace HAL {
      @result A JSString containing the JSON serialized representation
      of this JavaScript value.
      */
-    virtual JSString ToJSONString(unsigned indent = 0) final;
+    virtual JSString ToJSONString(unsigned indent = 0) const final;
     
     /*!
      @method
