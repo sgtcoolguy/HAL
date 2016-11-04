@@ -155,6 +155,12 @@ TEST_F(JSExportTests, JSExport) {
   XCTAssertEqual(3.141592653589793, static_cast<double>(result));
   XCTAssertEqual(1, widget_ptr->get_count_for_pi());
 
+  // test non-enumerable property
+  result = js_context.JSEvaluateScript("widget.noenumerable_value;");
+  XCTAssertTrue(static_cast<bool>(result));
+  result = js_context.JSEvaluateScript("Object.keys(widget).indexOf('noenumerable_value')===-1;");
+  XCTAssertTrue(static_cast<bool>(result));
+
   // FIXME
   auto string_ptr = widget.GetPrivate<std::string>();
   //XCTAssertEqual(nullptr, string_ptr);

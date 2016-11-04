@@ -89,6 +89,8 @@ public:
   // Remove "const" to test lazy loading
   JSValue js_get_pi() HAL_NOEXCEPT;
   
+  JSValue js_get_noenumerable_value() const HAL_NOEXCEPT;
+
   JSValue js_get_value() const                HAL_NOEXCEPT;
   bool    js_set_value(const JSValue& value) HAL_NOEXCEPT;
   
