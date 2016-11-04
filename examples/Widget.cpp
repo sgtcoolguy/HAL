@@ -210,6 +210,7 @@ void Widget::JSExportInitialize() {
   JSExport<Widget>::AddValueProperty("name"       , std::mem_fn(&Widget::js_get_name)  , std::mem_fn(&Widget::js_set_name));
   JSExport<Widget>::AddValueProperty("number"     , std::mem_fn(&Widget::js_get_number), std::mem_fn(&Widget::js_set_number));
   JSExport<Widget>::AddValueProperty("value"     , std::mem_fn(&Widget::js_get_value), std::mem_fn(&Widget::js_set_value));
+  JSExport<Widget>::AddValueProperty("noenumerable_value", std::mem_fn(&Widget::js_get_noenumerable_value), nullptr, false);
   JSExport<Widget>::AddConstantProperty("pi"     , std::mem_fn(&Widget::js_get_pi));
   JSExport<Widget>::AddFunctionProperty("helloCallback", std::mem_fn(&Widget::js_helloLambda));
   JSExport<Widget>::AddFunctionProperty("sayHello", std::mem_fn(&Widget::js_sayHello));
@@ -262,6 +263,10 @@ JSValue Widget::js_get_value() const HAL_NOEXCEPT {
 bool Widget::js_set_value(const JSValue& value) HAL_NOEXCEPT {
   jsvalue__ = value;
   return true;
+}
+
+JSValue Widget::js_get_noenumerable_value() const HAL_NOEXCEPT {
+  return get_context().CreateBoolean(true);
 }
 
 JSValue Widget::js_get_pi() HAL_NOEXCEPT {

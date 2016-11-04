@@ -564,7 +564,7 @@ namespace HAL {
   
   template<typename T>
   void JSExport<T>::AddValueProperty(const JSString& property_name, detail::GetNamedValuePropertyCallback<T> get_callback, detail::SetNamedValuePropertyCallback<T> set_callback, bool enumerable) {
-    builder__.AddValueProperty(property_name, get_callback, set_callback);
+    builder__.AddValueProperty(property_name, get_callback, set_callback, enumerable);
   }
 
   template<typename T>
