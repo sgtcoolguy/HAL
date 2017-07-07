@@ -17,9 +17,15 @@ namespace HAL {
     //HAL_LOG_TRACE("JSString::JSString()");
   }
   
-  JSString::JSString(const char* string) HAL_NOEXCEPT
-  : js_string_ref__(JSStringCreateWithUTF8CString(string))
-  , string__(string) {
+  JSString::JSString(const char* string) HAL_NOEXCEPT {
+    if (string) {
+      js_string_ref__ = JSStringCreateWithUTF8CString(string);
+      string__ = string;
+    } else {
+      js_string_ref__ = JSStringCreateWithUTF8CString("");
+      string__ = "";
+    }
+    
     HAL_LOG_TRACE("JSString:: ctor 1 ", this);
     HAL_LOG_TRACE("JSString:: retain ", js_string_ref__, " (implicit) for ", this);
     

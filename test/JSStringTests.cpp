@@ -55,6 +55,13 @@ TEST(JSStringTests, EmptyString) {
   XCTAssertTrue(stdString.empty());
 }
 
+TEST(JSStringTests, NullString) {
+  char* source = nullptr;
+  JSString string1 { source };
+  JSString string2;
+  XCTAssertEqual(string1, string2);
+}
+
 TEST(JSStringTests, Equal) {
   JSString string1 { "hello, world" };
   JSString string2 = string1;
