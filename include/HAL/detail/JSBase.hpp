@@ -18,6 +18,7 @@
 
 #define HAL_NOEXCEPT_ENABLE
 #define HAL_MOVE_CTOR_AND_ASSIGN_DEFAULT_ENABLE
+#define HAL_DEFINE_JSCLASSDEFINITIONEMPTY
 
 // See http://msdn.microsoft.com/en-us/library/b0084kay.aspx for the
 // list of Visual C++ "Predefined Macros". Visual Studio 2013 Update 3
