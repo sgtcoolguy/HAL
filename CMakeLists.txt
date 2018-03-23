@@ -13,6 +13,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 
 option(HAL_DISABLE_TESTS "Disable compiling the tests" OFF)
+option(HAL_DEFINE_JSCLASSDEFINITIONEMPTY "Define HAL_DEFINE_JSCLASSDEFINITIONEMPTY" ON)
 
 # Define helper functions and macros.
 include(${PROJECT_SOURCE_DIR}/cmake/internal_utils.cmake)
@@ -260,6 +261,10 @@ if (WIN32)
   #
   # Hence we'll turn on LTCG for release builds of HAL...
   set_property(TARGET HAL APPEND_STRING PROPERTY LINK_FLAGS_RELEASE "/LTCG")
+endif()
+
+if (HAL_DEFINE_JSCLASSDEFINITIONEMPTY)
+  add_definitions("-DHAL_DEFINE_JSCLASSDEFINITIONEMPTY") 
 endif()
 
 if (NOT HAL_DISABLE_TESTS)
