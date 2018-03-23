@@ -1,6 +1,6 @@
 #!groovy
 
-def cmakeAndMSBuild(buildDir, buildType, platform, args) {
+def cmakeAndMSBuild(buildDir, buildType, platform, sdkVersion, args) {
 	def cmake = tool(name: 'InSearchPath', type: 'hudson.plugins.cmake.CmakeTool')
 	def generator = 'Visual Studio 12 2013'
 	def msBuildArgs = ''
@@ -16,20 +16,25 @@ def cmakeAndMSBuild(buildDir, buildType, platform, args) {
 	}
 	bat "mkdir build\\${buildDir}"
 
-	// Run CMake
-	dir("build/${buildDir}") {
-		bat "\"${cmake}\" -G \"${generator}\" -D CMAKE_BUILD_TYPE=${buildType} ${args} ${env.WORKSPACE}"
-	}
-
-	// Then MSBuild
 	def msBuild12 = tool(name: 'MSBuild 12.0', type: 'hudson.plugins.msbuild.MsBuildInstallation')
-	bat "\"${msBuild12}\" /p:Configuration=${buildType} build/${buildDir}/HAL.sln ${msBuildArgs}"
+	def raw = bat(returnStdout: true, script: "echo %JavaScriptCore_${sdkVersion}_HOME%").trim()
+	def jscHome = raw.split('\n')[-1]
+	echo "Setting JavaScriptCore_HOME to ${jscHome}"
+	withEnv(["JavaScriptCore_HOME=${jscHome}"]) {
+		// Run CMake
+		dir("build/${buildDir}") {
+			bat "\"${cmake}\" -G \"${generator}\" -D CMAKE_BUILD_TYPE=${buildType} ${args} ${env.WORKSPACE}"
+		}
+
+		// Then MSBuild
+		bat "\"${msBuild12}\" /p:Configuration=${buildType} build/${buildDir}/HAL.sln ${msBuildArgs}"
+	}
 }
 
 // Wrap in timestamper
 timestamps {
 	// FIXME: Don't tie to the WIndows 8.1 machine, really we just need to ensure we use the JSC built against 8.1
-	node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1 && windows-8.1') {
+	node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
 		try {
 			stage('Checkout') {
 				checkout scm
@@ -37,7 +42,7 @@ timestamps {
 			}
 
 			stage('Win 8.1 Phone x86 Tests') {
-				cmakeAndMSBuild('testing', 'Debug', 'x86', '-DHAL_DISABLE_TESTS=OFF')
+				cmakeAndMSBuild('testing', 'Debug', 'x86', '8.1', '-DHAL_DISABLE_TESTS=OFF')
 				// Run CTest
 				dir('build/testing') {
 					bat '(robocopy Debug examples\\Debug HAL.dll) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
@@ -58,11 +63,11 @@ timestamps {
 			}
 
 			stage('Win 8.1 Phone x86') {
-				cmakeAndMSBuild('x86', 'Release', 'x86', '-DHAL_DISABLE_TESTS=ON')
+				cmakeAndMSBuild('x86', 'Release', 'x86', '8.1', '-DHAL_DISABLE_TESTS=ON')
 			}
 
 			stage('Win 8.1 Phone ARM') {
-				cmakeAndMSBuild('ARM', 'Release', 'ARM', '-DHAL_DISABLE_TESTS=ON')
+				cmakeAndMSBuild('ARM', 'Release', 'ARM', '8.1', '-DHAL_DISABLE_TESTS=ON')
 			}
 
 			// TODO Windows 10 Universal?
