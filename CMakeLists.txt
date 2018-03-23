@@ -14,6 +14,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 
 option(HAL_DISABLE_TESTS "Disable compiling the tests" OFF)
 option(HAL_DEFINE_JSCLASSDEFINITIONEMPTY "Define HAL_DEFINE_JSCLASSDEFINITIONEMPTY" ON)
+option(HAL_RENAME_AXWAYHAL "Rename DLL to AXWAYHAL" OFF)
 
 # Define helper functions and macros.
 include(${PROJECT_SOURCE_DIR}/cmake/internal_utils.cmake)
@@ -271,6 +272,10 @@ if (NOT HAL_DISABLE_TESTS)
   include(${PROJECT_SOURCE_DIR}/cmake/test.cmake)
   add_subdirectory(examples)
   add_subdirectory(test)
+endif()
+
+if (HAL_RENAME_AXWAYHAL)
+  set_target_properties(HAL PROPERTIES OUTPUT_NAME "AXWAYHAL")
 endif()
 
 # Support find_package(HAL 0.5 REQUIRED)
