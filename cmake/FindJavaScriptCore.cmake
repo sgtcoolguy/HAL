@@ -28,6 +28,8 @@ find_path(JavaScriptCore_INCLUDE_DIRS
 set(JavaScriptCore_ARCH "x86")
 if(CMAKE_GENERATOR MATCHES "^Visual Studio .+ ARM$")
   set(JavaScriptCore_ARCH "arm")
+elseif(CMAKE_GENERATOR MATCHES "^Visual Studio .+ Win64$")
+  set(JavaScriptCore_ARCH "x64")
 endif()
 
 find_library(JavaScriptCore_LIBRARIES
