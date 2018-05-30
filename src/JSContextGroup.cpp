@@ -9,6 +9,7 @@
 #include "HAL/JSContextGroup.hpp"
 #include "HAL/JSContext.hpp"
 #include "HAL/JSClass.hpp"
+#include "HAL/JSError.hpp"
 
 #include <cassert>
 
@@ -21,10 +22,12 @@ namespace HAL {
   }
   
   JSContext JSContextGroup::CreateContext() const HAL_NOEXCEPT {
+    JSError::ClearNativeStack();
     return JSContext(*this, JSClass());
   }
   
   JSContext JSContextGroup::CreateContext(const JSClass& global_object_class) const HAL_NOEXCEPT {
+    JSError::ClearNativeStack();
     return JSContext(*this, global_object_class);
   }
   

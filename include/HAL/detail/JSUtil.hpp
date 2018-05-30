@@ -53,15 +53,19 @@ namespace HAL { namespace detail {
     std::uint32_t js_linenumber() const {
       return js_linenumber__;
     }
-    std::vector<JSValue> js_stack() const {
+    std::string js_stack() const {
       return js_stack__;
+    }
+    std::string js_nativeStack() const {
+      return js_nativeStack__;
     }
   private:
     std::string js_name__;
     std::string js_message__;
     std::string js_filename__;
     std::uint32_t js_linenumber__;
-    std::vector<JSValue> js_stack__;
+    std::string js_stack__;
+    std::string js_nativeStack__;
   };
 
   HAL_EXPORT void    ThrowRuntimeError(const std::string& internal_component_name, const std::string& message);

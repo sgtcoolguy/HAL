@@ -12,6 +12,7 @@
 #include "HAL/JSValue.hpp"
 #include "HAL/JSObject.hpp"
 #include <vector>
+#include <deque> 
 
 namespace HAL {
 
@@ -25,11 +26,19 @@ namespace HAL {
 */
 class HAL_EXPORT JSError final : public JSObject HAL_PERFORMANCE_COUNTER2(JSError) {
  public:
+#pragma warning(push)
+#pragma warning(disable : 4251)
+ 	static std::deque<std::string> NativeStack__;
+ 	static std::string GetNativeStack();
+ 	static void ClearNativeStack();
+#pragma warning(pop)
+
  	std::string message() const;
  	std::string name() const;
  	std::string filename() const;
  	std::uint32_t linenumber() const;
- 	std::vector<JSValue> stack() const;
+ 	std::string stack() const;
+ 	std::string nativeStack() const;
 	
  private:
 	

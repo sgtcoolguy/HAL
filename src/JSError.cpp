@@ -19,12 +19,16 @@
 
 namespace HAL {
 
+std::deque<std::string> JSError::NativeStack__; 
+
 JSError::JSError(const JSContext& js_context, const std::vector<JSValue>& arguments)
 		: JSObject(js_context, MakeError(js_context, arguments)) {
+	SetProperty("nativeStack", js_context.CreateString(JSError::GetNativeStack()));
 }
 
 JSError::JSError(const JSContext& js_context, JSObjectRef js_object_ref)
 		: JSObject(js_context, js_object_ref) {
+	SetProperty("nativeStack", js_context.CreateString(JSError::GetNativeStack()));
 }
 
 std::string JSError::message() const {
@@ -55,14 +59,30 @@ std::uint32_t JSError::linenumber() const {
 	return 0;
 }
 
-std::vector<JSValue> JSError::stack() const {
-	if (HasProperty("native_stack") && GetProperty("native_stack").IsObject()) {
-		const auto js_stack = static_cast<JSObject>(GetProperty("native_stack"));
-		if (js_stack.IsArray()) {
-			return static_cast<std::vector<JSValue>>(static_cast<JSArray>(js_stack));
-		}
+std::string JSError::stack() const {
+	if (HasProperty("stack")) {
+		return static_cast<std::string>(GetProperty("stack"));
 	}
-	return std::vector<JSValue>();
+	return "";
+}
+
+std::string JSError::nativeStack() const {
+	if (HasProperty("nativeStack")) {
+		return static_cast<std::string>(GetProperty("nativeStack"));
+	}
+	return "";
+}
+
+std::string JSError::GetNativeStack() {
+	std::ostringstream stacktrace;
+	for (auto iter = JSError::NativeStack__.rbegin(); iter != JSError::NativeStack__.rend(); ++iter) {
+		stacktrace << (std::distance(JSError::NativeStack__.rbegin(), iter) + 1) << "  " << *iter << "\n";
+	}
+	return stacktrace.str();
+}
+
+void JSError::ClearNativeStack() {
+	JSError::NativeStack__.clear();
 }
 
 JSObjectRef JSError::MakeError(const JSContext& js_context, const std::vector<JSValue>& arguments) {

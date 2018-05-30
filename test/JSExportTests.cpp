@@ -1307,7 +1307,8 @@ TEST_F(JSExportTests, ExceptionCall) {
     XCTAssertEqual("Parser error", e.js_message());
     XCTAssertEqual("app.js", e.js_filename());
     XCTAssertEqual(123, e.js_linenumber());
-    XCTAssertEqual(1, e.js_stack().size());
+    XCTAssertNotEqual("", e.js_stack());
+    XCTAssertNotEqual("", e.js_nativeStack());
   }
 }
 
@@ -1328,7 +1329,8 @@ TEST_F(JSExportTests, ExceptionCall2) {
     XCTAssertEqual("Parser error", e.js_message());
     XCTAssertEqual("app.js", e.js_filename());
     XCTAssertEqual(123, e.js_linenumber());
-    XCTAssertEqual(2, e.js_stack().size());
+    XCTAssertNotEqual("", e.js_stack());
+    XCTAssertNotEqual("", e.js_nativeStack());
   }
 }
 

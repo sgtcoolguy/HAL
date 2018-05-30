@@ -430,6 +430,13 @@ namespace HAL { namespace detail {
     assert(match_results.size() == 3);
     const std::string function_name = match_results[1];
     
+    const auto native_name = GetJSExportComponentName(function_name);
+    JSError::NativeStack__.push_back(native_name);
+
+    if (JSError::NativeStack__.size() > 10) {
+      JSError::NativeStack__.pop_front();
+    }
+
     // precondition
     assert(js_object.IsFunction());
     
@@ -448,6 +455,10 @@ namespace HAL { namespace detail {
       const auto callback = (callback_position -> second).function_callback();
       const auto result   = callback(*native_this_ptr, to_vector(this_object.get_context(), argument_count, arguments_array), this_object);
       
+      if (!JSError::NativeStack__.empty()) {
+        JSError::NativeStack__.pop_back();
+      }
+
 #ifdef HAL_LOGGING_ENABLE
       std::string js_value_str;
       if (result.IsObject()) {
@@ -495,14 +506,12 @@ namespace HAL { namespace detail {
 
     HAL_LOG_ERROR(name, ": ", e.what());
 
-    std::vector<JSValue> js_stack = e.js_stack();
-    js_stack.push_back(js_context.CreateString(name));
-
     auto js_error = js_context.CreateError();
     js_error.SetProperty("message",    js_context.CreateString(e.js_message()));
     js_error.SetProperty("name",       js_context.CreateString(e.js_name()));
     js_error.SetProperty("fileName",   js_context.CreateString(e.js_filename()));
-    js_error.SetProperty("native_stack",      js_context.CreateArray(js_stack));
+    js_error.SetProperty("stack",       js_context.CreateString(e.js_stack()));
+    js_error.SetProperty("nativeStack", js_context.CreateString(e.js_nativeStack()));
     js_error.SetProperty("lineNumber", js_context.CreateNumber(e.js_linenumber()));
     return js_error;
   }
@@ -521,7 +530,8 @@ namespace HAL { namespace detail {
 
     auto js_error = js_context.CreateError();
     js_error.SetProperty("message",    js_context.CreateString(what));
-    js_error.SetProperty("native_stack",      js_context.CreateArray({ js_context.CreateString(name) }));
+    js_error.SetProperty("name", js_context.CreateString(name));
+    js_error.SetProperty("nativeStack", js_context.CreateString(JSError::GetNativeStack()));
     return js_error;
   }
   

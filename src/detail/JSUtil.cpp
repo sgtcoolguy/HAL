@@ -28,6 +28,7 @@ namespace HAL { namespace detail {
     js_filename__   = js_error.filename();
     js_linenumber__ = js_error.linenumber();
     js_stack__      = js_error.stack();
+    js_nativeStack__ = js_error.nativeStack();
     js_message__    = js_error.message();
   }
 
