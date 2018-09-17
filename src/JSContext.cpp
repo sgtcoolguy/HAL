@@ -43,7 +43,7 @@ namespace HAL {
 	}
 
 	JSValue JSContext::CreateString() const HAL_NOEXCEPT {
-		return JSValue(JSString(), false);
+		return JSValue(JSString(""), false);
 	}
 
 	JSValue JSContext::CreateString(const JSString& js_string) const HAL_NOEXCEPT {

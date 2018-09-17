@@ -330,6 +330,7 @@ namespace HAL {
 		static JSObject GetObject(const JSExportObject* jsexport_ptr);
 		static void RegisterJSExportObject(const JSExportObject* jsexport_ptr, const JsValueRef);
 		static void UnregisterJSExportObject(const JSExportObject* jsexport_ptr);
+		static bool IsJSExportObjectRegistered(const JsValueRef);
 
 		static JSExportConstructObjectCallback GetObjectInitializerCallback(const JsValueRef js_ctor_ref);
 		static void RemoveObjectConstructorCallback(const JsValueRef js_ctor_ref);
@@ -396,6 +397,7 @@ namespace HAL {
 #pragma warning(push)
 #pragma warning(disable: 4251)
 		JsValueRef js_object_ref__;
+		static std::unordered_map<JsValueRef, const std::uintptr_t> js_object_ref_to_js_private_data_map__;
 		static std::unordered_map<std::uintptr_t, const JsValueRef> js_private_data_to_js_object_ref_map__;
 		static std::unordered_map<std::uintptr_t, JSExportConstructObjectCallback> js_ctor_ref_to_constructor_map__;
 #pragma warning(pop)
@@ -409,6 +411,11 @@ namespace HAL {
 
 	template<typename T>
 	std::shared_ptr<T> JSObject::GetPrivate() const HAL_NOEXCEPT {
+		const auto position = js_object_ref_to_js_private_data_map__.find(js_object_ref__);
+		const auto found = position != js_object_ref_to_js_private_data_map__.end();
+		if (found) {
+			return std::shared_ptr<T>(std::make_shared<JSObject>(*this), dynamic_cast<T*>(reinterpret_cast<JSExportObject*>(position->second)));
+		}
 		return std::shared_ptr<T>(std::make_shared<JSObject>(*this), dynamic_cast<T*>(static_cast<JSExportObject*>(GetPrivate())));
 	}
 

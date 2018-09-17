@@ -170,6 +170,7 @@ namespace HAL {
 		swap(js_object_ref__, other.js_object_ref__);
 	}
 
+	std::unordered_map<JsValueRef, const std::uintptr_t> JSObject::js_object_ref_to_js_private_data_map__;
 	std::unordered_map<std::uintptr_t, const JsValueRef> JSObject::js_private_data_to_js_object_ref_map__;
 	std::unordered_map<std::uintptr_t, JSExportConstructObjectCallback> JSObject::js_ctor_ref_to_constructor_map__;
 
@@ -184,12 +185,18 @@ namespace HAL {
 		return GetUndefinedRef();
 	}
 
+	bool JSObject::IsJSExportObjectRegistered(const JsValueRef js_value_ref) {
+		const auto position = js_object_ref_to_js_private_data_map__.find(js_value_ref);
+		return (position != js_object_ref_to_js_private_data_map__.end());
+	}
+
 	void JSObject::RegisterJSExportObject(const JSExportObject* js_export_ptr, const JsValueRef js_value_ref) {
 		const auto key = reinterpret_cast<std::uintptr_t>(js_export_ptr);
 		const auto position = js_private_data_to_js_object_ref_map__.find(key);
 		const auto found = position != js_private_data_to_js_object_ref_map__.end();
 		assert(!found);
 		js_private_data_to_js_object_ref_map__.emplace(key, js_value_ref);
+		js_object_ref_to_js_private_data_map__.emplace(js_value_ref, key);
 	}
 
 	void JSObject::UnregisterJSExportObject(const JSExportObject* js_export_ptr) {
@@ -197,7 +204,9 @@ namespace HAL {
 		const auto position = js_private_data_to_js_object_ref_map__.find(key);
 		const auto found = position != js_private_data_to_js_object_ref_map__.end();
 		assert(found);
+		const auto js_value_ref = position->second;
 		js_private_data_to_js_object_ref_map__.erase(key);
+		js_object_ref_to_js_private_data_map__.erase(js_value_ref);
 	}
 
 	JSExportConstructObjectCallback JSObject::GetObjectInitializerCallback(const JsValueRef js_ctor_ref) {
@@ -235,10 +244,6 @@ namespace HAL {
 		return JSObject::GetUndefinedRef();
 	}
 
-	void CALLBACK JSExportConstructorBeforeCollect(JsRef ref, void* callbackState) {
-		JSObject::RemoveObjectConstructorCallback(static_cast<JsValueRef>(ref));
-	}
-
 	JSObject::JSObject(const JSClass& js_class) {
 		// Create constructor
 		ASSERT_AND_THROW_JS_ERROR(JsCreateFunction(JSExportCallConstructor, nullptr, &js_object_ref__));
@@ -247,7 +252,6 @@ namespace HAL {
 			ctor_init(&js_object_ref__);
 		}
 		js_ctor_ref_to_constructor_map__.emplace(reinterpret_cast<std::uintptr_t>(js_object_ref__), js_class.GetConstructObjectCallback());
-		ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_object_ref__, nullptr, JSExportConstructorBeforeCollect));
 	}
 
 	// For interoperability with the JSRT API.
