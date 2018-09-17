@@ -16,7 +16,8 @@
 namespace HAL {
   
   class JSContext;
-  
+  class JSClass;
+
   /*!
    @class
    
@@ -71,7 +72,8 @@ namespace HAL {
      String, and Array
      */
     JSContext CreateContext() const HAL_NOEXCEPT;
-    
+	JSContext CreateContext(const JSClass& js_class) const HAL_NOEXCEPT;
+
     ~JSContextGroup()                         HAL_NOEXCEPT;
     JSContextGroup(const JSContextGroup&)     HAL_NOEXCEPT;
     JSContextGroup(JSContextGroup&&)          HAL_NOEXCEPT;
