@@ -1,130 +1,369 @@
 /**
- * Javascriptcorecpp
- *
- * Copyright (c) 2014 by Appcelerator, Inc. All Rights Reserved.
- * Licensed under the terms of the Apache Public License.
- * Please see the LICENSE included with this distribution for details.
- */
+* HAL
+*
+* Copyright (c) 2018 by Axway. All Rights Reserved.
+* Licensed under the terms of the Apache Public License.
+* Please see the LICENSE included with this distribution for details.
+*/
 
 #ifndef _HAL_JSCLASS_HPP_
 #define _HAL_JSCLASS_HPP_
 
 #include "HAL/detail/JSBase.hpp"
-#include "HAL/JSClassDefinition.hpp"
-
-#include <string>
+#include "HAL/detail/JSUtil.hpp"
+#include <functional>
 #include <vector>
-#include <cstdint>
-#include <memory>
-
-
-namespace HAL { namespace detail {
-  template<typename T>
-  class JSExportClassDefinition;
-  
-  template<typename T>
-  class JSExportClassDefinitionBuilder;
-}}
+#include <unordered_map>
+#include <cassert>
+#include <cctype>
+#include <codecvt>
 
 namespace HAL {
-  
-  /*!
-   @class
-   
-   @discussion A JSClass is an RAII wrapper around a JSClassRef, the
-   JavaScriptCore C API representation of a JavaScript class that
-   defines JavaScript objects implemented in C.
-   
-   A JSClass wraps a C++ class and seamlessly integrates it into the
-   JavaScriptCore runtime.  The only way to create a JSClass is
-   through the use of a JSClassBuilder, so please see that class for
-   more details.
-   
-   An instance of JSClass may be passed to the JSContextGroup
-   constructor to create a custom JavaScript global object for all
-   contexts in that group.
-   */
-  class HAL_EXPORT JSClass HAL_PERFORMANCE_COUNTER1(JSClass) {
-  public:
-    
-    /*!
-     @method
-     
-     @abstract Return an empty JSClass.
-     
-     @result An empty JSClass.
-     */
-    JSClass() HAL_NOEXCEPT;
-    
-    /*!
-     @method
-     
-     @abstract Return a JSClass defined by the given JSClassDefinition.
-     
-     @result A JSClass defined by the given JSClassDefinition.
-     */
-    JSClass(const JSClassDefinition& js_class_definition) HAL_NOEXCEPT;
-    
-    /*!
-     @method
-     
-     @abstract Return the name of this JSClass.
-     
-     @result The name of this JSClass.
-     */
-    virtual std::string get_name() const HAL_NOEXCEPT final {
-      return name__;
-    }
-    
-    virtual ~JSClass()          HAL_NOEXCEPT;
-    JSClass(const JSClass&)     HAL_NOEXCEPT;
-    JSClass(JSClass&&)          HAL_NOEXCEPT;
-    JSClass& operator=(JSClass) HAL_NOEXCEPT;
-    void swap(JSClass&)         HAL_NOEXCEPT;
-    
-  private:
-    
-    // These five classes need access to operator JSClassRef().
-    friend class JSContext; // for constructor
-    friend class JSValue;   // for IsObjectOfClass
-    friend class JSObject;  // for constructor
-    
-    // For setting JSClassDefinition.parentClass
-    template<typename T>
-    friend class detail::JSExportClassDefinition;
-    
-    // For setting JSClassDefinition.parentClass
-    template<typename T>
-    friend class detail::JSExportClassDefinitionBuilder;
-    
-    explicit operator JSClassRef() const HAL_NOEXCEPT {
-      return js_class_ref__;
-    }
-    
-    // Silence 4251 on Windows since private member variables do not
-    // need to be exported from a DLL.
+
+	class JSContext;
+	class JSValue;
+	class JSObject;
+
+	typedef std::function<JSValue(JSObject, JSObject, const std::vector<JSValue>&)> JSObjectCallAsFunctionCallback;
+	typedef std::function<JSValue(JSObject)> JSObjectGetPropertyCallback;
+	typedef std::function<bool(JSObject, const JSValue& value)> JSObjectSetPropertyCallback;
+	typedef std::function<void(JsValueRef, bool, JsValueRef*, unsigned short, JsValueRef*)> JSExportConstructObjectCallback;
+	typedef std::function<void(JsValueRef*)> JSExportInitializeConstructorCallback;
+	typedef std::function<void(JsValueRef*)> JSExportInitializePropertiesCallback;
+
+	class HAL_EXPORT JSClass {
+	public:
+		JSClass() HAL_NOEXCEPT { };
+		virtual ~JSClass()          HAL_NOEXCEPT { }
+		JSClass(const JSClass&)     HAL_NOEXCEPT { }
+		JSClass(JSClass&&)          HAL_NOEXCEPT { }
+		JSClass& operator=(JSClass) HAL_NOEXCEPT { return *this; }
+
+		virtual void AddFunctionProperty(const std::string& name, JSObjectCallAsFunctionCallback callback) { assert(false); }
+		virtual void AddValueProperty(const std::string& name, JSObjectGetPropertyCallback, JSObjectSetPropertyCallback) { assert(false); };
+		virtual void AddConstantProperty(const std::string& name, JSObjectGetPropertyCallback) { assert(false); };
+		virtual void SetParent(const JSClass& js_class) { assert(false); }
+
+		virtual JSExportInitializeConstructorCallback GetInitializeConstructorCallback() const { return [](JsValueRef*) {}; }
+		virtual JSExportConstructObjectCallback GetConstructObjectCallback() const { return [](JsValueRef, bool, JsValueRef*, unsigned short, JsValueRef*) {}; }
+		virtual JSExportInitializePropertiesCallback GetInitializePropertiesCallback() const { return [](JsValueRef*) {}; }
+	protected:
+
+		// Prevent heap based objects.
+		void* operator new(std::size_t) = delete;   // #1: To prevent allocation of scalar objects
+		void* operator new[](std::size_t) = delete; // #2: To prevent allocation of array of objects
+	};
+
+	template<typename T>
+	class JSExportClass final : public JSClass {
+	public:
+		JSExportClass() HAL_NOEXCEPT;
+		virtual ~JSExportClass() HAL_NOEXCEPT;
+		JSExportClass& operator=(JSExportClass rhs) HAL_NOEXCEPT {
+			std::swap(parent_initialize_ctor_callback__, rhs.parent_initialize_ctor_callback__);
+			return *this;
+		}
+		JSExportClass(const JSExportClass&) HAL_NOEXCEPT;
+		JSExportClass(JSExportClass&&) HAL_NOEXCEPT;
+
+		virtual void AddValueProperty(const std::string& name, JSObjectGetPropertyCallback, JSObjectSetPropertyCallback) override;
+		virtual void AddConstantProperty(const std::string& name, JSObjectGetPropertyCallback) override;
+		virtual void AddFunctionProperty(const std::string& name, JSObjectCallAsFunctionCallback callback) override;
+		virtual void SetParent(const JSClass& js_class) override;
+		virtual JSExportInitializeConstructorCallback GetInitializeConstructorCallback() const override;
+		virtual JSExportConstructObjectCallback GetConstructObjectCallback() const override;
+		virtual JSExportInitializePropertiesCallback GetInitializePropertiesCallback() const override;
+	protected:
+		// Prevent heap based objects.
+		void* operator new(std::size_t) = delete;   // #1: To prevent allocation of scalar objects
+		void* operator new[](std::size_t) = delete; // #2: To prevent allocation of array of objects
+
 #pragma warning(push)
 #pragma warning(disable: 4251)
-    std::string name__;
-    JSClassRef  js_class_ref__ { nullptr };
+		JSExportInitializeConstructorCallback parent_initialize_ctor_callback__{ nullptr };
+		JSExportInitializePropertiesCallback parent_initialize_properties_callback__{ nullptr };
+		static std::unordered_map<std::string, JSObjectCallAsFunctionCallback> name_to_function_map__;
+		static std::unordered_map<std::string, JSObjectGetPropertyCallback> name_to_getter_map__;
+		static std::unordered_map<std::string, JSObjectSetPropertyCallback> name_to_setter_map__;
 #pragma warning(pop)
-    
-  protected:
-    
-#undef  HAL_JSCLASS_LOCK_GUARD
-#ifdef  HAL_THREAD_SAFE
-    std::recursive_mutex mutex__;
-#define HAL_JSCLASS_LOCK_GUARD std::lock_guard<std::recursive_mutex> lock(mutex__)
-#else
-#define HAL_JSCLASS_LOCK_GUARD
-#endif  // HAL_THREAD_SAFE
-  };
-  
-  inline
-  void swap(JSClass& first, JSClass& second) HAL_NOEXCEPT {
-    first.swap(second);
-  }
-  
+	};
+
+	template<typename T>
+	JSExportClass<T>::JSExportClass() HAL_NOEXCEPT {
+
+	}
+
+	template<typename T>
+	JSExportClass<T>::~JSExportClass() HAL_NOEXCEPT {
+	}
+
+	template<typename T>
+	JSExportClass<T>::JSExportClass(const JSExportClass& rhs) HAL_NOEXCEPT
+		: parent_initialize_ctor_callback__(rhs.parent_initialize_ctor_callback__)
+		, parent_initialize_properties_callback__(rhs.parent_initialize_properties_callback__) {
+
+	}
+
+	template<typename T>
+	JSExportClass<T>::JSExportClass(JSExportClass&& rhs) HAL_NOEXCEPT
+		: parent_initialize_ctor_callback__(rhs.parent_initialize_ctor_callback__) 
+		, parent_initialize_properties_callback__(rhs.parent_initialize_properties_callback__) {
+
+	}
+
+	struct NamedFunctionCallbackState {
+		std::string name;
+		JSObjectCallAsFunctionCallback callback;
+	};
+
+	template<typename T>
+	JsValueRef CALLBACK JSExportCreateNamedFunction(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
+		assert(state != nullptr);
+
+		const auto js_arguments = detail::to_arguments(arguments, argumentCount);
+		auto this_object = JSObject(arguments[0]);
+		auto function_object = JSObject(callee);
+
+		return static_cast<JsValueRef>(state->callback(function_object, this_object, js_arguments));
+	}
+
+	template<typename T>
+	void CALLBACK JSExportNamedFunctionBeforeCollect(JsRef ref, void* callbackState) {
+		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
+
+		assert(!state->name.empty());
+		state->name.clear();
+
+		assert(state->callback != nullptr);
+		state->callback = nullptr;
+
+		delete state;
+	}
+
+	template<typename T>
+	JSExportInitializeConstructorCallback JSExportClass<T>::GetInitializeConstructorCallback() const {
+		const auto parent_initialize_ctor_callback = parent_initialize_ctor_callback__;
+		const auto name_to_function_map = name_to_function_map__;
+		const auto name_to_getter_map = name_to_getter_map__;
+		const auto name_to_setter_map = name_to_setter_map__;
+		return [=](JsValueRef* ctor_object_ref) {
+			if (parent_initialize_ctor_callback != nullptr) {
+				parent_initialize_ctor_callback(ctor_object_ref);
+			}
+
+			JSContext js_context = JSContext(JSObject::GetContextRef());
+			JSObject ctor_object = JSObject(*ctor_object_ref);
+			JSObject js_prototype = ctor_object.HasProperty("prototype") ? static_cast<JSObject>(ctor_object.GetProperty("prototype")) : js_context.CreateObject();
+
+			for (const auto pair : name_to_function_map) {
+				JsValueRef js_function_ref;
+
+				const auto callbackState = new NamedFunctionCallbackState();
+				callbackState->name = pair.first;
+				callbackState->callback = pair.second;
+
+				const auto js_name = static_cast<JsValueRef>(JSString(pair.first));
+				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
+				js_prototype.SetProperty(pair.first, JSValue(js_function_ref));
+
+				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
+			}
+
+			for (const auto pair : name_to_getter_map) {
+				assert(!pair.first.empty());
+
+				// get + capitalized property name
+				std::string getter_name = "get" + pair.first;
+				getter_name[3] = toupper(getter_name[3]);
+
+				// define getter function
+				JsValueRef js_function_ref;
+
+				const auto callbackState = new NamedFunctionCallbackState();
+				callbackState->name = getter_name;
+				callbackState->callback = [pair](JSObject, JSObject this_object, const std::vector<JSValue>&) {
+					return pair.second(this_object);
+				};
+
+				const auto js_name = static_cast<JsValueRef>(JSString(getter_name));
+				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
+				js_prototype.SetProperty(getter_name, JSValue(js_function_ref));
+
+				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
+			}
+
+			for (const auto pair : name_to_setter_map) {
+				assert(!pair.first.empty());
+
+				// set + capitalized property name
+				std::string setter_name = "set" + pair.first;
+				setter_name[3] = toupper(setter_name[3]);
+
+				// define setter function
+				JsValueRef js_function_ref;
+
+				const auto callbackState = new NamedFunctionCallbackState();
+				callbackState->name = setter_name;
+				callbackState->callback = [pair, js_context](JSObject, JSObject this_object, const std::vector<JSValue>& js_arguments) {
+					if (js_arguments.size() > 0) {
+						pair.second(this_object, js_arguments.at(0));
+					}
+					return js_context.CreateUndefined();
+				};
+
+				const auto js_name = static_cast<JsValueRef>(JSString(setter_name));
+				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
+				js_prototype.SetProperty(setter_name, JSValue(js_function_ref));
+
+				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
+			}
+
+			ctor_object.SetProperty("prototype", js_prototype);
+		};
+	}
+
+	template<typename T>
+	void CALLBACK JSExportFinalize(void *data) {
+		const auto js_export_object_ptr = static_cast<T*>(data);
+		JSObject::UnregisterJSExportObject(js_export_object_ptr);
+		delete js_export_object_ptr;
+	}
+
+	template<typename T>
+	JSExportInitializePropertiesCallback JSExportClass<T>::GetInitializePropertiesCallback() const {
+		const auto parent_initialize_properties_callback = parent_initialize_properties_callback__;
+		const auto name_to_getter_map = name_to_getter_map__;
+		const auto name_to_setter_map = name_to_setter_map__;
+		return [=](JsValueRef* this_object_ref) {
+			if (parent_initialize_properties_callback) {
+				parent_initialize_properties_callback(this_object_ref);
+			}
+
+			JSContext js_context = JSContext(JSObject::GetContextRef());
+			JSObject this_object = JSObject(*this_object_ref);
+
+			// properties
+			for (const auto pair : name_to_getter_map) {
+				assert(!pair.first.empty());
+
+				const auto property_name = pair.first;
+
+				// get + capitalized property name
+				std::string getter_name = "get" + pair.first;
+				getter_name[3] = toupper(getter_name[3]);
+
+				const auto setter_position = name_to_setter_map__.find(property_name);
+				const auto setter_found = setter_position != name_to_setter_map__.end();
+
+				auto property_descriptor = js_context.CreateObject();
+
+				property_descriptor.SetProperty("get", this_object.GetProperty(getter_name));
+
+				if (setter_found) {
+					std::string setter_name = "set" + property_name;
+					setter_name[3] = toupper(setter_name[3]);
+					property_descriptor.SetProperty("set", this_object.GetProperty(setter_name));
+				}
+
+				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+				const auto wstr_name = converter.from_bytes(property_name);
+
+				JsPropertyIdRef propertyId;
+				ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(wstr_name.data(), &propertyId));
+				bool is_defined;
+				ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ref, propertyId, static_cast<JsValueRef>(property_descriptor), &is_defined));
+				assert(is_defined == true);
+			}
+		};
+	}
+
+	template<typename T>
+	JSExportConstructObjectCallback JSExportClass<T>::GetConstructObjectCallback() const {
+		const auto initialize_properties_callback = GetInitializePropertiesCallback();
+		const auto name_to_getter_map = name_to_getter_map__;
+		const auto name_to_setter_map = name_to_setter_map__;
+		return [=](JsValueRef callee, bool isConstructCall, JsValueRef* arguments, unsigned short argumentCount, JsValueRef* this_object_ref) {
+			assert(isConstructCall);
+
+			JsValueRef js_context_ref;
+			ASSERT_AND_THROW_JS_ERROR(JsGetCurrentContext(&js_context_ref));
+
+			const auto js_context = JSContext(js_context_ref);
+			auto js_export_object_ptr = new T(js_context);
+			ASSERT_AND_THROW_JS_ERROR(JsCreateExternalObject(js_export_object_ptr, JSExportFinalize<T>, this_object_ref));
+
+			JSObject::RegisterJSExportObject(js_export_object_ptr, *this_object_ref);
+
+			const auto js_arguments = detail::to_arguments(arguments, argumentCount);
+			auto this_object = JSObject(*this_object_ref);
+
+			const auto js_prototype = JSObject(callee).GetProperty("prototype");
+			if (js_prototype.IsObject()) {
+
+				// functions
+				const auto prototype_obj = static_cast<JSObject>(js_prototype);
+				const auto properties = prototype_obj.GetProperties();
+				for (const auto pair : properties) {
+					this_object.SetProperty(pair.first, pair.second);
+				}
+
+				// properties
+				initialize_properties_callback(this_object_ref);
+			}
+
+			js_export_object_ptr->postInitialize(this_object);
+			js_export_object_ptr->postCallAsConstructor(js_context, js_arguments);
+		};
+	}
+
+	template<typename T>
+	std::unordered_map<std::string, JSObjectCallAsFunctionCallback> JSExportClass<T>::name_to_function_map__;
+
+	template<typename T>
+	std::unordered_map<std::string, JSObjectGetPropertyCallback> JSExportClass<T>::name_to_getter_map__;
+
+	template<typename T>
+	std::unordered_map<std::string, JSObjectSetPropertyCallback> JSExportClass<T>::name_to_setter_map__;
+
+	template<typename T>
+	void JSExportClass<T>::AddFunctionProperty(const std::string& name, JSObjectCallAsFunctionCallback callback) {
+		const auto position = name_to_function_map__.find(name);
+		const auto found = position != name_to_function_map__.end();
+		assert(!found);
+		name_to_function_map__.emplace(name, callback);
+	};
+
+	template<typename T>
+	void JSExportClass<T>::AddValueProperty(const std::string& name, JSObjectGetPropertyCallback getter, JSObjectSetPropertyCallback setter) {
+		{
+			const auto getter_position = name_to_getter_map__.find(name);
+			const auto getter_found = getter_position != name_to_getter_map__.end();
+			assert(!getter_found);
+			name_to_getter_map__.emplace(name, getter);
+		}
+		{
+			const auto setter_position = name_to_setter_map__.find(name);
+			const auto setter_found = setter_position != name_to_setter_map__.end();
+			assert(!setter_found);
+			name_to_setter_map__.emplace(name, setter);
+		}
+	};
+
+	template<typename T>
+	void JSExportClass<T>::AddConstantProperty(const std::string& name, JSObjectGetPropertyCallback getter) {
+		const auto getter_position = name_to_getter_map__.find(name);
+		const auto getter_found = getter_position != name_to_getter_map__.end();
+		assert(!getter_found);
+		name_to_getter_map__.emplace(name, getter);
+	};
+
+	template<typename T>
+	void JSExportClass<T>::SetParent(const JSClass& js_class) {
+		parent_initialize_ctor_callback__ = js_class.GetInitializeConstructorCallback();
+		parent_initialize_properties_callback__ = js_class.GetInitializePropertiesCallback();
+	};
+
 } // namespace HAL {
 
 #endif // _HAL_JSCLASS_HPP_
