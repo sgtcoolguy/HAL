@@ -152,12 +152,12 @@ namespace HAL {
 
 	JSValue JSContext::JSEvaluateScript(const std::string& script, JSObject this_object, const std::string& source_url) const {
 		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto script_string = converter.from_bytes(script).data();
+		const auto script_string = converter.from_bytes(script);
 
 		// TODO FIXME: this_object should not be ignored!
 
 		JsValueRef result;
-		ASSERT_AND_THROW_JS_ERROR(JsParseScript(script_string, 0, L"", &result));
+		ASSERT_AND_THROW_JS_ERROR(JsParseScript(script_string.data(), 0, L"", &result));
 		return result;
 	}
 
