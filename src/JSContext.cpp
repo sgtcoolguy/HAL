@@ -157,7 +157,7 @@ namespace HAL {
 		// TODO FIXME: this_object should not be ignored!
 
 		JsValueRef result;
-		ASSERT_AND_THROW_JS_ERROR(JsParseScript(script_string.data(), 0, L"", &result));
+		ASSERT_AND_THROW_JS_ERROR(JsRunScript(script_string.data(), 0, L"", &result));
 		return result;
 	}
 
