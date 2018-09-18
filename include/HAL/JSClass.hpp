@@ -35,23 +35,69 @@ namespace HAL {
 	public:
 		JSClass() HAL_NOEXCEPT { };
 		virtual ~JSClass()          HAL_NOEXCEPT { }
-		JSClass(const JSClass&)     HAL_NOEXCEPT { }
-		JSClass(JSClass&&)          HAL_NOEXCEPT { }
-		JSClass& operator=(JSClass) HAL_NOEXCEPT { return *this; }
+		JSClass(const JSClass& rhs) HAL_NOEXCEPT
+			: parent_initialize_ctor_callback__(rhs.parent_initialize_ctor_callback__)
+			, parent_initialize_properties_callback__(rhs.parent_initialize_properties_callback__) {
+			overloaded_initialize_ctor_callback__ = rhs.GetInitializeConstructorCallback();
+			overloaded_construct_object_callback__ = rhs.GetConstructObjectCallback();
+			overloaded_initialize_properties_callback__ = rhs.GetInitializePropertiesCallback();
+		}
+		JSClass(JSClass&& rhs) HAL_NOEXCEPT 
+			: parent_initialize_ctor_callback__(rhs.parent_initialize_ctor_callback__)
+			, parent_initialize_properties_callback__(rhs.parent_initialize_properties_callback__)  {
+			overloaded_initialize_ctor_callback__ = rhs.GetInitializeConstructorCallback();
+			overloaded_construct_object_callback__ = rhs.GetConstructObjectCallback();
+			overloaded_initialize_properties_callback__ = rhs.GetInitializePropertiesCallback();
+		}
+		JSClass& operator=(JSClass rhs) HAL_NOEXCEPT {
+			std::swap(parent_initialize_ctor_callback__, rhs.parent_initialize_ctor_callback__);
+			std::swap(parent_initialize_properties_callback__, rhs.parent_initialize_properties_callback__);
+			overloaded_initialize_ctor_callback__ = rhs.GetInitializeConstructorCallback();
+			overloaded_construct_object_callback__ = rhs.GetConstructObjectCallback();
+			overloaded_initialize_properties_callback__ = rhs.GetInitializePropertiesCallback();
+			return *this; 
+		}
 
 		virtual void AddFunctionProperty(const std::string& name, JSObjectCallAsFunctionCallback callback) { assert(false); }
 		virtual void AddValueProperty(const std::string& name, JSObjectGetPropertyCallback, JSObjectSetPropertyCallback) { assert(false); };
 		virtual void AddConstantProperty(const std::string& name, JSObjectGetPropertyCallback) { assert(false); };
 		virtual void SetParent(const JSClass& js_class) { assert(false); }
 
-		virtual JSExportInitializeConstructorCallback GetInitializeConstructorCallback() const { return [](JsValueRef*) {}; }
-		virtual JSExportConstructObjectCallback GetConstructObjectCallback() const { return [](JsValueRef, bool, JsValueRef*, unsigned short, JsValueRef*) {}; }
-		virtual JSExportInitializePropertiesCallback GetInitializePropertiesCallback() const { return [](JsValueRef*) {}; }
+		virtual JSExportInitializeConstructorCallback GetInitializeConstructorCallback() const { 
+			if (overloaded_initialize_ctor_callback__) {
+				return overloaded_initialize_ctor_callback__;
+			}
+			return [](JsValueRef*) {}; 
+		}
+		virtual JSExportConstructObjectCallback GetConstructObjectCallback() const {
+			if (overloaded_construct_object_callback__) {
+				return overloaded_construct_object_callback__;
+			}
+			return [](JsValueRef, bool, JsValueRef*, unsigned short, JsValueRef*) {}; 
+		}
+		virtual JSExportInitializePropertiesCallback GetInitializePropertiesCallback() const {
+			if (overloaded_initialize_properties_callback__) {
+				return overloaded_initialize_properties_callback__;
+			}
+			return [](JsValueRef*) {}; 
+		}
 	protected:
 
 		// Prevent heap based objects.
 		void* operator new(std::size_t) = delete;   // #1: To prevent allocation of scalar objects
 		void* operator new[](std::size_t) = delete; // #2: To prevent allocation of array of objects
+
+#pragma warning(push)
+#pragma warning(disable: 4251)
+		JSExportInitializeConstructorCallback parent_initialize_ctor_callback__{ nullptr };
+		JSExportInitializePropertiesCallback parent_initialize_properties_callback__{ nullptr };
+
+		// Only used for copy constructor and assignment operator
+		JSExportInitializeConstructorCallback overloaded_initialize_ctor_callback__{ nullptr };
+		JSExportConstructObjectCallback overloaded_construct_object_callback__{ nullptr };
+		JSExportInitializePropertiesCallback overloaded_initialize_properties_callback__{ nullptr };
+#pragma warning(pop)
+
 	};
 
 	template<typename T>
@@ -59,12 +105,9 @@ namespace HAL {
 	public:
 		JSExportClass() HAL_NOEXCEPT;
 		virtual ~JSExportClass() HAL_NOEXCEPT;
-		JSExportClass& operator=(JSExportClass rhs) HAL_NOEXCEPT {
-			std::swap(parent_initialize_ctor_callback__, rhs.parent_initialize_ctor_callback__);
-			return *this;
-		}
-		JSExportClass(const JSExportClass&) HAL_NOEXCEPT;
-		JSExportClass(JSExportClass&&) HAL_NOEXCEPT;
+		JSExportClass& operator=(const JSExportClass&) = default;
+		JSExportClass(const JSExportClass&) = default;
+		JSExportClass(JSExportClass&&) = default;
 
 		virtual void AddValueProperty(const std::string& name, JSObjectGetPropertyCallback, JSObjectSetPropertyCallback) override;
 		virtual void AddConstantProperty(const std::string& name, JSObjectGetPropertyCallback) override;
@@ -80,8 +123,6 @@ namespace HAL {
 
 #pragma warning(push)
 #pragma warning(disable: 4251)
-		JSExportInitializeConstructorCallback parent_initialize_ctor_callback__{ nullptr };
-		JSExportInitializePropertiesCallback parent_initialize_properties_callback__{ nullptr };
 		static std::unordered_map<std::string, JSObjectCallAsFunctionCallback> name_to_function_map__;
 		static std::unordered_map<std::string, JSObjectGetPropertyCallback> name_to_getter_map__;
 		static std::unordered_map<std::string, JSObjectSetPropertyCallback> name_to_setter_map__;
@@ -95,20 +136,6 @@ namespace HAL {
 
 	template<typename T>
 	JSExportClass<T>::~JSExportClass() HAL_NOEXCEPT {
-	}
-
-	template<typename T>
-	JSExportClass<T>::JSExportClass(const JSExportClass& rhs) HAL_NOEXCEPT
-		: parent_initialize_ctor_callback__(rhs.parent_initialize_ctor_callback__)
-		, parent_initialize_properties_callback__(rhs.parent_initialize_properties_callback__) {
-
-	}
-
-	template<typename T>
-	JSExportClass<T>::JSExportClass(JSExportClass&& rhs) HAL_NOEXCEPT
-		: parent_initialize_ctor_callback__(rhs.parent_initialize_ctor_callback__) 
-		, parent_initialize_properties_callback__(rhs.parent_initialize_properties_callback__) {
-
 	}
 
 	struct NamedFunctionCallbackState {
