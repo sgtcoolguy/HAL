@@ -331,6 +331,8 @@ namespace HAL {
 		static void RegisterJSExportObject(const JSExportObject* jsexport_ptr, const JsValueRef);
 		static void UnregisterJSExportObject(const JSExportObject* jsexport_ptr);
 		static bool IsJSExportObjectRegistered(const JsValueRef);
+		static void RegisterGlobalObject(const JSExportObject* jsexport_ptr, const JsValueRef);
+		static void UnregisterGlobalObject(const JsValueRef);
 
 		static JSExportConstructObjectCallback GetObjectInitializerCallback(const JsValueRef js_ctor_ref);
 		static void RemoveObjectConstructorCallback(const JsValueRef js_ctor_ref);

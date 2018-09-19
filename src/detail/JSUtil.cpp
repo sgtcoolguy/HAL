@@ -95,8 +95,11 @@ namespace HAL {
 #ifndef NDEBUG
 			OutputDebugString(output.c_str());
 #endif
-			std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-			const auto str_message = std::string(converter.to_bytes(output));
+			std::string str_message = "Unknown error";
+			if (!output.empty()) {
+				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+				str_message = std::string(converter.to_bytes(output));
+			}
 
 			throw std::runtime_error(str_message);
 		}

@@ -47,7 +47,7 @@ namespace HAL {
 
 	template<typename T>
 	void JSExport<T>::AddFunctionProperty(const std::string& name, CallNamedFunctionCallback<T> callback) {
-		js_class__.AddFunctionProperty(name, [callback](JSObject function_object, JSObject this_object, const std::vector<JSValue>& arguments) {
+		js_class__.AddFunctionProperty(name, [name, callback](JSObject function_object, JSObject this_object, const std::vector<JSValue>& arguments) {
 			auto t = this_object.GetPrivate<T>();
 			if (t) {
 				return callback(*t, arguments, this_object);

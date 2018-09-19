@@ -55,8 +55,11 @@ namespace HAL {
 		std::size_t stringLength;
 		ASSERT_AND_THROW_JS_ERROR(JsStringToPointer(js_string_ref__, &stringValue, &stringLength));
 
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		return std::string(converter.to_bytes(stringValue));
+		if (stringLength > 0) {
+			std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+			return std::string(converter.to_bytes(stringValue));
+		}
+		return "";
 	}
 
 	JSString::~JSString() HAL_NOEXCEPT {

@@ -152,13 +152,22 @@ namespace HAL {
 
 	JSValue JSContext::JSEvaluateScript(const std::string& script, JSObject this_object, const std::string& source_url) const {
 		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto script_string = converter.from_bytes(script);
+		std::wstring script_string = L"";
+		std::wstring source_url_string = L"";
+		if (!script.empty()) {
+			script_string = converter.from_bytes(script);
+		}
+		if (!source_url.empty()) {
+			source_url_string = converter.from_bytes(source_url);
+		}
 
-		// TODO FIXME: this_object should not be ignored!
+		JsValueRef executable;
+		ASSERT_AND_THROW_JS_ERROR(JsParseScript(script_string.data(), 0, source_url_string.data(), &executable));
 
-		JsValueRef result;
-		ASSERT_AND_THROW_JS_ERROR(JsRunScript(script_string.data(), 0, L"", &result));
-		return result;
+		auto js_executable = JSObject(executable);
+		assert(js_executable.IsFunction());
+
+		return js_executable(this_object);
 	}
 
 	bool JSContext::JSCheckScriptSyntax(const std::string& script, const std::string& source_url) const HAL_NOEXCEPT {

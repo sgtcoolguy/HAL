@@ -190,6 +190,21 @@ namespace HAL {
 		return (position != js_object_ref_to_js_private_data_map__.end());
 	}
 
+	void JSObject::RegisterGlobalObject(const JSExportObject* js_export_ptr, const JsValueRef js_value_ref) {
+		const auto key = reinterpret_cast<std::uintptr_t>(js_export_ptr);
+		const auto position = js_object_ref_to_js_private_data_map__.find(js_value_ref);
+		const auto found = position != js_object_ref_to_js_private_data_map__.end();
+		assert(!found);
+		js_object_ref_to_js_private_data_map__.emplace(js_value_ref, key);
+	}
+
+	void JSObject::UnregisterGlobalObject(const JsValueRef js_value_ref) {
+		const auto position = js_object_ref_to_js_private_data_map__.find(js_value_ref);
+		const auto found = position != js_object_ref_to_js_private_data_map__.end();
+		assert(found);
+		js_object_ref_to_js_private_data_map__.erase(js_value_ref);
+	}
+
 	void JSObject::RegisterJSExportObject(const JSExportObject* js_export_ptr, const JsValueRef js_value_ref) {
 		const auto key = reinterpret_cast<std::uintptr_t>(js_export_ptr);
 		const auto position = js_private_data_to_js_object_ref_map__.find(key);

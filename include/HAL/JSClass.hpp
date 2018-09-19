@@ -151,6 +151,9 @@ namespace HAL {
 		const auto js_arguments = detail::to_arguments(arguments, argumentCount);
 		auto this_object = JSObject(arguments[0]);
 		auto function_object = JSObject(callee);
+		if (static_cast<JSValue>(this_object).IsUndefined()) {
+			this_object = function_object.get_context().get_global_object();
+		}
 
 		return static_cast<JsValueRef>(state->callback(function_object, this_object, js_arguments));
 	}
