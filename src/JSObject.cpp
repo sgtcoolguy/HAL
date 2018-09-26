@@ -55,11 +55,6 @@ namespace HAL {
 		JsPropertyIdRef propertyId;
 		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
 		ASSERT_AND_THROW_JS_ERROR(JsSetProperty(js_object_ref__, propertyId, static_cast<JsValueRef>(property_value), true));
-
-#ifndef NDEBUG
-		assert(HasProperty(property_name));
-		assert(GetProperty(property_name) == property_value);
-#endif
 	}
 
 	void JSObject::SetProperty(unsigned property_index, const JSValue& property_value) {
@@ -147,17 +142,21 @@ namespace HAL {
 	}
 
 	JSObject::~JSObject() HAL_NOEXCEPT {
+		JsRelease(js_object_ref__, nullptr);
 	}
 
 	JSObject::JSObject(const JSObject& rhs) HAL_NOEXCEPT
 		: js_object_ref__(rhs.js_object_ref__) {
+		JsAddRef(js_object_ref__, nullptr);
 	}
 
 	JSObject::JSObject(JSObject&& rhs) HAL_NOEXCEPT
 		: js_object_ref__(rhs.js_object_ref__) {
+		JsAddRef(js_object_ref__, nullptr);
 	}
 
 	JSObject& JSObject::operator=(JSObject rhs) {
+		JsAddRef(js_object_ref__, nullptr);
 		swap(rhs);
 		return *this;
 	}
@@ -273,11 +272,14 @@ namespace HAL {
 			js_ctor_ref_to_constructor_map__.erase(key);
 		}
 		js_ctor_ref_to_constructor_map__.emplace(key, js_class.GetConstructObjectCallback());
+
+		JsAddRef(js_object_ref__, nullptr);
 	}
 
 	// For interoperability with the JSRT API.
 	JSObject::JSObject(JsValueRef js_object_ref)
 		: js_object_ref__(js_object_ref) {
+		JsAddRef(js_object_ref__, nullptr);
 	}
 
 	JSObject::operator JSValue() const {

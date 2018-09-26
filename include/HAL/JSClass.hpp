@@ -100,6 +100,10 @@ namespace HAL {
 
 	};
 
+	struct NamedFunctionCallbackState {
+		std::string name;
+	};
+
 	template<typename T>
 	class JSExportClass final : public JSClass {
 	public:
@@ -116,6 +120,11 @@ namespace HAL {
 		virtual JSExportInitializeConstructorCallback GetInitializeConstructorCallback() const override;
 		virtual JSExportConstructObjectCallback GetConstructObjectCallback() const override;
 		virtual JSExportInitializePropertiesCallback GetInitializePropertiesCallback() const override;
+
+		static JsValueRef CallNamedFunction(JsValueRef callee, JsValueRef *arguments, unsigned short argumentCount, void *callbackState);
+		static JsValueRef CallGetterFunction(JsValueRef callee, JsValueRef *arguments, unsigned short argumentCount, void *callbackState);
+		static JsValueRef CallSetterFunction(JsValueRef callee, JsValueRef *arguments, unsigned short argumentCount, void *callbackState);
+
 	protected:
 		// Prevent heap based objects.
 		void* operator new(std::size_t) = delete;   // #1: To prevent allocation of scalar objects
@@ -138,13 +147,8 @@ namespace HAL {
 	JSExportClass<T>::~JSExportClass() HAL_NOEXCEPT {
 	}
 
-	struct NamedFunctionCallbackState {
-		std::string name;
-		JSObjectCallAsFunctionCallback callback;
-	};
-
 	template<typename T>
-	JsValueRef CALLBACK JSExportCreateNamedFunction(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+	JsValueRef JSExportClass<T>::CallNamedFunction(JsValueRef callee, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
 		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
 		assert(state != nullptr);
 
@@ -155,20 +159,66 @@ namespace HAL {
 			this_object = function_object.get_context().get_global_object();
 		}
 
-		return static_cast<JsValueRef>(state->callback(function_object, this_object, js_arguments));
+		const auto position = name_to_function_map__.find(state->name);
+		const auto found = position != name_to_function_map__.end();
+		assert(found);
+
+		return static_cast<JsValueRef>(position->second(function_object, this_object, js_arguments));
 	}
 
 	template<typename T>
-	void CALLBACK JSExportNamedFunctionBeforeCollect(JsRef ref, void* callbackState) {
+	JsValueRef JSExportClass<T>::CallGetterFunction(JsValueRef callee, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
 		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
+		assert(state != nullptr);
 
-		assert(!state->name.empty());
-		state->name.clear();
+		auto this_object = JSObject(arguments[0]);
+		auto function_object = JSObject(callee);
+		if (static_cast<JSValue>(this_object).IsUndefined()) {
+			this_object = function_object.get_context().get_global_object();
+		}
 
-		assert(state->callback != nullptr);
-		state->callback = nullptr;
+		const auto position = name_to_getter_map__.find(state->name);
+		const auto found = position != name_to_getter_map__.end();
+		assert(found);
 
-		delete state;
+		return static_cast<JsValueRef>(position->second(this_object));
+	}
+
+	template<typename T>
+	JsValueRef JSExportClass<T>::CallSetterFunction(JsValueRef callee, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
+		assert(state != nullptr);
+
+		auto this_object = JSObject(arguments[0]);
+		auto function_object = JSObject(callee);
+		if (static_cast<JSValue>(this_object).IsUndefined()) {
+			this_object = function_object.get_context().get_global_object();
+		}
+
+		const auto position = name_to_setter_map__.find(state->name);
+		const auto found = position != name_to_setter_map__.end();
+		assert(found);
+
+		if (argumentCount > 1) {
+			position->second(this_object, JSValue(arguments[1]));
+		}
+
+		return JSObject::GetUndefinedRef();
+	}
+
+	template<typename T>
+	JsValueRef CALLBACK JSExportCreateNamedFunction(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		return JSExportClass<T>::CallNamedFunction(callee, arguments, argumentCount, callbackState);
+	}
+
+	template<typename T>
+	JsValueRef CALLBACK JSExportCreateGetterFunction(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		return JSExportClass<T>::CallGetterFunction(callee, arguments, argumentCount, callbackState);
+	}
+
+	template<typename T>
+	JsValueRef CALLBACK JSExportCreateSetterFunction(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		return JSExportClass<T>::CallSetterFunction(callee, arguments, argumentCount, callbackState);
 	}
 
 	template<typename T>
@@ -179,6 +229,14 @@ namespace HAL {
 			JSObject::UnregisterJSExportObject(js_export_object_ptr);
 			delete js_export_object_ptr;
 		}
+	}
+
+	template<typename T>
+	void CALLBACK JSExportNamedFunctionBeforeCollect(JsRef ref, void* callbackState) {
+		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
+		assert(!state->name.empty());
+		state->name.clear();
+		delete state;
 	}
 
 	template<typename T>
@@ -208,12 +266,10 @@ namespace HAL {
 			JSObject js_prototype = ctor_object.HasProperty("prototype") ? static_cast<JSObject>(ctor_object.GetProperty("prototype")) : js_context.CreateObject();
 
 			for (const auto pair : name_to_function_map) {
-				JsValueRef js_function_ref;
-
 				const auto callbackState = new NamedFunctionCallbackState();
 				callbackState->name = pair.first;
-				callbackState->callback = pair.second;
 
+				JsValueRef js_function_ref;
 				const auto js_name = static_cast<JsValueRef>(JSString(pair.first));
 				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
 				js_prototype.SetProperty(pair.first, JSValue(js_function_ref));
@@ -229,17 +285,13 @@ namespace HAL {
 				std::string getter_name = "get" + pair.first;
 				getter_name[3] = toupper(getter_name[3]);
 
+				const auto callbackState = new NamedFunctionCallbackState();
+				callbackState->name = pair.first;
+
 				// define getter function
 				JsValueRef js_function_ref;
-
-				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = getter_name;
-				callbackState->callback = [pair](JSObject, JSObject this_object, const std::vector<JSValue>&) {
-					return pair.second(this_object);
-				};
-
 				const auto js_name = static_cast<JsValueRef>(JSString(getter_name));
-				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
+				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateGetterFunction<T>, callbackState, &js_function_ref));
 				js_prototype.SetProperty(getter_name, JSValue(js_function_ref));
 				ctor_object.SetProperty(getter_name, JSValue(js_function_ref));
 
@@ -253,20 +305,13 @@ namespace HAL {
 				std::string setter_name = "set" + pair.first;
 				setter_name[3] = toupper(setter_name[3]);
 
+				const auto callbackState = new NamedFunctionCallbackState();
+				callbackState->name = pair.first;
+
 				// define setter function
 				JsValueRef js_function_ref;
-
-				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = setter_name;
-				callbackState->callback = [pair, js_context](JSObject, JSObject this_object, const std::vector<JSValue>& js_arguments) {
-					if (js_arguments.size() > 0) {
-						pair.second(this_object, js_arguments.at(0));
-					}
-					return js_context.CreateUndefined();
-				};
-
 				const auto js_name = static_cast<JsValueRef>(JSString(setter_name));
-				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
+				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateSetterFunction<T>, callbackState, &js_function_ref));
 				js_prototype.SetProperty(setter_name, JSValue(js_function_ref));
 				ctor_object.SetProperty(setter_name, JSValue(js_function_ref));
 
