@@ -251,6 +251,7 @@ namespace HAL {
 			if (callback) {
 				JsValueRef js_object_ref = nullptr;
 				callback(callee, isConstructCall, arguments, argumentCount, &js_object_ref);
+				assert(js_object_ref);
 				return js_object_ref;
 			}
 		}
@@ -263,10 +264,15 @@ namespace HAL {
 		// Create constructor
 		ASSERT_AND_THROW_JS_ERROR(JsCreateFunction(JSExportCallConstructor, nullptr, &js_object_ref__));
 		const auto ctor_init = js_class.GetInitializeConstructorCallback();
-		if (ctor_init != nullptr) {
-			ctor_init(&js_object_ref__);
+		assert(ctor_init != nullptr);
+		ctor_init(&js_object_ref__);
+
+		const auto key = reinterpret_cast<std::uintptr_t>(js_object_ref__);
+		const auto position = js_ctor_ref_to_constructor_map__.find(key);
+		if (position != js_ctor_ref_to_constructor_map__.end()) {
+			js_ctor_ref_to_constructor_map__.erase(key);
 		}
-		js_ctor_ref_to_constructor_map__.emplace(reinterpret_cast<std::uintptr_t>(js_object_ref__), js_class.GetConstructObjectCallback());
+		js_ctor_ref_to_constructor_map__.emplace(key, js_class.GetConstructObjectCallback());
 	}
 
 	// For interoperability with the JSRT API.

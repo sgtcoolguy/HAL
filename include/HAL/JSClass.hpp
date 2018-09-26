@@ -174,9 +174,11 @@ namespace HAL {
 	template<typename T>
 	void CALLBACK JSExportConstructorBeforeCollect(JsRef ref, void* callbackState) {
 		JSObject::RemoveObjectConstructorCallback(static_cast<JsValueRef>(ref));
-		const auto js_export_object_ptr = static_cast<T*>(callbackState);
-		JSObject::UnregisterJSExportObject(js_export_object_ptr);
-		delete js_export_object_ptr;
+		if (callbackState != nullptr) {
+			const auto js_export_object_ptr = static_cast<T*>(callbackState);
+			JSObject::UnregisterJSExportObject(js_export_object_ptr);
+			delete js_export_object_ptr;
+		}
 	}
 
 	template<typename T>
@@ -195,6 +197,8 @@ namespace HAL {
 				const auto js_export_object_ptr = new T(js_context);
 				JSObject::RegisterJSExportObject(js_export_object_ptr, *ctor_object_ref);
 				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, js_export_object_ptr, JSExportConstructorBeforeCollect<T>));
+			} else {
+				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, nullptr, JSExportConstructorBeforeCollect<T>));
 			}
 
 			if (parent_initialize_ctor_callback != nullptr) {

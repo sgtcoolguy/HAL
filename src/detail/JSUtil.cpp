@@ -26,11 +26,18 @@ namespace HAL {
 			if (hasProperty) {
 				JsValueRef js_value_ref;
 				JsGetProperty(js_object_ref, propertyId, &js_value_ref);
-
-				LPCWSTR value = nullptr;
-				JsStringToPointer(js_value_ref, &value, nullptr);
-				output += value;
-				output += L"\r\n";
+				if (js_value_ref) {
+					JsValueType js_value_type;
+					JsGetValueType(js_value_ref, &js_value_type);
+					if (js_value_type == JsValueType::JsString) {
+						LPCWSTR value = nullptr;
+						JsStringToPointer(js_value_ref, &value, nullptr);
+						if (value) {
+							output += value;
+							output += L"\r\n";
+						}
+					}
+				}
 			}
 			return output;
 		}
