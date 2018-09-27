@@ -243,9 +243,6 @@ namespace HAL {
 	JSExportInitializeConstructorCallback JSExportClass<T>::GetInitializeConstructorCallback() const {
 		const auto parent_initialize_ctor_callback = parent_initialize_ctor_callback__;
 		const auto initialize_properties_callback = GetInitializePropertiesCallback();
-		const auto name_to_function_map = name_to_function_map__;
-		const auto name_to_getter_map = name_to_getter_map__;
-		const auto name_to_setter_map = name_to_setter_map__;
 		return [=](JsValueRef* ctor_object_ref) {
 
 			JSContext js_context = JSContext(JSObject::GetContextRef());
@@ -265,28 +262,29 @@ namespace HAL {
 
 			JSObject js_prototype = ctor_object.HasProperty("prototype") ? static_cast<JSObject>(ctor_object.GetProperty("prototype")) : js_context.CreateObject();
 
-			for (const auto pair : name_to_function_map) {
+			for (const auto pair : name_to_function_map__) {
+				const auto function_name = pair.first;
 				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = pair.first;
+				callbackState->name = function_name;
 
 				JsValueRef js_function_ref;
-				const auto js_name = static_cast<JsValueRef>(JSString(pair.first));
+				const auto js_name = static_cast<JsValueRef>(JSString(function_name));
 				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
-				js_prototype.SetProperty(pair.first, JSValue(js_function_ref));
-				ctor_object.SetProperty(pair.first, JSValue(js_function_ref));
+				js_prototype.SetProperty(function_name, JSValue(js_function_ref));
+				ctor_object.SetProperty(function_name, JSValue(js_function_ref));
 
 				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
 			}
 
-			for (const auto pair : name_to_getter_map) {
-				assert(!pair.first.empty());
+			for (const auto pair : name_to_getter_map__) {
+				const auto property_name = pair.first;
 
 				// get + capitalized property name
-				std::string getter_name = "get" + pair.first;
+				std::string getter_name = "get" + property_name;
 				getter_name[3] = toupper(getter_name[3]);
 
 				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = pair.first;
+				callbackState->name = property_name;
 
 				// define getter function
 				JsValueRef js_function_ref;
@@ -298,15 +296,15 @@ namespace HAL {
 				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
 			}
 
-			for (const auto pair : name_to_setter_map) {
-				assert(!pair.first.empty());
+			for (const auto pair : name_to_setter_map__) {
+				const auto property_name = pair.first;
 
 				// set + capitalized property name
-				std::string setter_name = "set" + pair.first;
+				std::string setter_name = "set" + property_name;
 				setter_name[3] = toupper(setter_name[3]);
 
 				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = pair.first;
+				callbackState->name = property_name;
 
 				// define setter function
 				JsValueRef js_function_ref;
@@ -334,8 +332,6 @@ namespace HAL {
 	template<typename T>
 	JSExportInitializePropertiesCallback JSExportClass<T>::GetInitializePropertiesCallback() const {
 		const auto parent_initialize_properties_callback = parent_initialize_properties_callback__;
-		const auto name_to_getter_map = name_to_getter_map__;
-		const auto name_to_setter_map = name_to_setter_map__;
 		return [=](JsValueRef* this_object_ref) {
 			if (parent_initialize_properties_callback) {
 				parent_initialize_properties_callback(this_object_ref);
@@ -345,17 +341,14 @@ namespace HAL {
 			JSObject this_object = JSObject(*this_object_ref);
 
 			// properties
-			for (const auto pair : name_to_getter_map) {
-				assert(!pair.first.empty());
-
+			for (const auto pair : name_to_getter_map__) {
 				const auto property_name = pair.first;
 
 				// get + capitalized property name
-				std::string getter_name = "get" + pair.first;
+				std::string getter_name = "get" + property_name;
 				getter_name[3] = toupper(getter_name[3]);
 
-				const auto setter_position = name_to_setter_map__.find(property_name);
-				const auto setter_found = setter_position != name_to_setter_map__.end();
+				const auto setter_found = name_to_setter_map__.find(property_name) != name_to_setter_map__.end();
 
 				auto property_descriptor = js_context.CreateObject();
 
@@ -382,8 +375,6 @@ namespace HAL {
 	template<typename T>
 	JSExportConstructObjectCallback JSExportClass<T>::GetConstructObjectCallback() const {
 		const auto initialize_properties_callback = GetInitializePropertiesCallback();
-		const auto name_to_getter_map = name_to_getter_map__;
-		const auto name_to_setter_map = name_to_setter_map__;
 		return [=](JsValueRef callee, bool isConstructCall, JsValueRef* arguments, unsigned short argumentCount, JsValueRef* this_object_ref) {
 			assert(isConstructCall);
 
