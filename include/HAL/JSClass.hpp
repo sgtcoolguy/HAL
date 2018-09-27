@@ -50,8 +50,8 @@ namespace HAL {
 			overloaded_initialize_properties_callback__ = rhs.GetInitializePropertiesCallback();
 		}
 		JSClass& operator=(JSClass rhs) HAL_NOEXCEPT {
-			std::swap(parent_initialize_ctor_callback__, rhs.parent_initialize_ctor_callback__);
-			std::swap(parent_initialize_properties_callback__, rhs.parent_initialize_properties_callback__);
+			parent_initialize_ctor_callback__ = rhs.parent_initialize_ctor_callback__;
+			parent_initialize_properties_callback__ = rhs.parent_initialize_properties_callback__;
 			overloaded_initialize_ctor_callback__ = rhs.GetInitializeConstructorCallback();
 			overloaded_construct_object_callback__ = rhs.GetConstructObjectCallback();
 			overloaded_initialize_properties_callback__ = rhs.GetInitializePropertiesCallback();
@@ -135,6 +135,7 @@ namespace HAL {
 		static std::unordered_map<std::string, JSObjectCallAsFunctionCallback> name_to_function_map__;
 		static std::unordered_map<std::string, JSObjectGetPropertyCallback> name_to_getter_map__;
 		static std::unordered_map<std::string, JSObjectSetPropertyCallback> name_to_setter_map__;
+		static std::unordered_map<std::string, JsValueRef> name_to_constant_map__;
 #pragma warning(pop)
 	};
 
@@ -177,11 +178,25 @@ namespace HAL {
 			this_object = function_object.get_context().get_global_object();
 		}
 
-		const auto position = name_to_getter_map__.find(state->name);
+		const auto name = state->name;
+
+		const auto constant_position = name_to_constant_map__.find(name);
+		const auto constant_found = constant_position != name_to_constant_map__.end();
+
+		if (constant_found && constant_position->second != nullptr) {
+			return constant_position->second;
+		}
+
+		const auto position = name_to_getter_map__.find(name);
 		const auto found = position != name_to_getter_map__.end();
 		assert(found);
 
-		return static_cast<JsValueRef>(position->second(this_object));
+		const auto js_value_ref = static_cast<JsValueRef>(position->second(this_object));
+		if (constant_found) {
+			JsAddRef(js_value_ref, nullptr);
+			name_to_constant_map__[name] = js_value_ref;
+		}
+		return js_value_ref;
 	}
 
 	template<typename T>
@@ -434,6 +449,9 @@ namespace HAL {
 	std::unordered_map<std::string, JSObjectSetPropertyCallback> JSExportClass<T>::name_to_setter_map__;
 
 	template<typename T>
+	std::unordered_map<std::string, JsValueRef> JSExportClass<T>::name_to_constant_map__;
+
+	template<typename T>
 	void JSExportClass<T>::AddFunctionProperty(const std::string& name, JSObjectCallAsFunctionCallback callback) {
 		const auto position = name_to_function_map__.find(name);
 		const auto found = position != name_to_function_map__.end();
@@ -463,6 +481,7 @@ namespace HAL {
 		const auto getter_found = getter_position != name_to_getter_map__.end();
 		assert(!getter_found);
 		name_to_getter_map__.emplace(name, getter);
+		name_to_constant_map__.emplace(name, nullptr);
 	};
 
 	template<typename T>
