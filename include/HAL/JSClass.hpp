@@ -67,19 +67,19 @@ namespace HAL {
 			if (overloaded_initialize_ctor_callback__) {
 				return overloaded_initialize_ctor_callback__;
 			}
-			return [](JsValueRef*) {}; 
+			return nullptr; 
 		}
 		virtual JSExportConstructObjectCallback GetConstructObjectCallback() const {
 			if (overloaded_construct_object_callback__) {
 				return overloaded_construct_object_callback__;
 			}
-			return [](JsValueRef, bool, JsValueRef*, unsigned short, JsValueRef*) {}; 
+			return nullptr;
 		}
 		virtual JSExportInitializePropertiesCallback GetInitializePropertiesCallback() const {
 			if (overloaded_initialize_properties_callback__) {
 				return overloaded_initialize_properties_callback__;
 			}
-			return [](JsValueRef*) {}; 
+			return nullptr;
 		}
 	protected:
 
@@ -241,85 +241,90 @@ namespace HAL {
 
 	template<typename T>
 	JSExportInitializeConstructorCallback JSExportClass<T>::GetInitializeConstructorCallback() const {
-		const auto parent_initialize_ctor_callback = parent_initialize_ctor_callback__;
-		const auto initialize_properties_callback = GetInitializePropertiesCallback();
-		return [=](JsValueRef* ctor_object_ref) {
+		static JSExportInitializeConstructorCallback callback;
+		static std::once_flag of;
+		std::call_once(of, [this]() {
+			const auto parent_initialize_ctor_callback = parent_initialize_ctor_callback__;
+			const auto initialize_properties_callback = GetInitializePropertiesCallback();
+			callback = [=](JsValueRef* ctor_object_ref) {
+				JSContext js_context = JSContext(JSObject::GetContextRef());
+				JSObject ctor_object = JSObject(*ctor_object_ref);
 
-			JSContext js_context = JSContext(JSObject::GetContextRef());
-			JSObject ctor_object = JSObject(*ctor_object_ref);
+				if (!JSObject::IsJSExportObjectRegistered(*ctor_object_ref)) {
+					const auto js_export_object_ptr = new T(js_context);
+					JSObject::RegisterJSExportObject(js_export_object_ptr, *ctor_object_ref);
+					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, js_export_object_ptr, JSExportConstructorBeforeCollect<T>));
+				}
+				else {
+					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, nullptr, JSExportConstructorBeforeCollect<T>));
+				}
 
-			if (!JSObject::IsJSExportObjectRegistered(*ctor_object_ref)) {
-				const auto js_export_object_ptr = new T(js_context);
-				JSObject::RegisterJSExportObject(js_export_object_ptr, *ctor_object_ref);
-				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, js_export_object_ptr, JSExportConstructorBeforeCollect<T>));
-			} else {
-				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, nullptr, JSExportConstructorBeforeCollect<T>));
-			}
+				if (parent_initialize_ctor_callback != nullptr) {
+					parent_initialize_ctor_callback(ctor_object_ref);
+				}
 
-			if (parent_initialize_ctor_callback != nullptr) {
-				parent_initialize_ctor_callback(ctor_object_ref);
-			}
+				JSObject js_prototype = ctor_object.HasProperty("prototype") ? static_cast<JSObject>(ctor_object.GetProperty("prototype")) : js_context.CreateObject();
 
-			JSObject js_prototype = ctor_object.HasProperty("prototype") ? static_cast<JSObject>(ctor_object.GetProperty("prototype")) : js_context.CreateObject();
+				for (const auto pair : name_to_function_map__) {
+					const auto function_name = pair.first;
+					const auto callbackState = new NamedFunctionCallbackState();
+					callbackState->name = function_name;
 
-			for (const auto pair : name_to_function_map__) {
-				const auto function_name = pair.first;
-				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = function_name;
+					JsValueRef js_function_ref;
+					const auto js_name = static_cast<JsValueRef>(JSString(function_name));
+					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
+					js_prototype.SetProperty(function_name, JSValue(js_function_ref));
+					ctor_object.SetProperty(function_name, JSValue(js_function_ref));
 
-				JsValueRef js_function_ref;
-				const auto js_name = static_cast<JsValueRef>(JSString(function_name));
-				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
-				js_prototype.SetProperty(function_name, JSValue(js_function_ref));
-				ctor_object.SetProperty(function_name, JSValue(js_function_ref));
+					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
+				}
 
-				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
-			}
+				for (const auto pair : name_to_getter_map__) {
+					const auto property_name = pair.first;
 
-			for (const auto pair : name_to_getter_map__) {
-				const auto property_name = pair.first;
+					// get + capitalized property name
+					std::string getter_name = "get" + property_name;
+					getter_name[3] = toupper(getter_name[3]);
 
-				// get + capitalized property name
-				std::string getter_name = "get" + property_name;
-				getter_name[3] = toupper(getter_name[3]);
+					const auto callbackState = new NamedFunctionCallbackState();
+					callbackState->name = property_name;
 
-				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = property_name;
+					// define getter function
+					JsValueRef js_function_ref;
+					const auto js_name = static_cast<JsValueRef>(JSString(getter_name));
+					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateGetterFunction<T>, callbackState, &js_function_ref));
+					js_prototype.SetProperty(getter_name, JSValue(js_function_ref));
+					ctor_object.SetProperty(getter_name, JSValue(js_function_ref));
 
-				// define getter function
-				JsValueRef js_function_ref;
-				const auto js_name = static_cast<JsValueRef>(JSString(getter_name));
-				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateGetterFunction<T>, callbackState, &js_function_ref));
-				js_prototype.SetProperty(getter_name, JSValue(js_function_ref));
-				ctor_object.SetProperty(getter_name, JSValue(js_function_ref));
+					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
+				}
 
-				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
-			}
+				for (const auto pair : name_to_setter_map__) {
+					const auto property_name = pair.first;
 
-			for (const auto pair : name_to_setter_map__) {
-				const auto property_name = pair.first;
+					// set + capitalized property name
+					std::string setter_name = "set" + property_name;
+					setter_name[3] = toupper(setter_name[3]);
 
-				// set + capitalized property name
-				std::string setter_name = "set" + property_name;
-				setter_name[3] = toupper(setter_name[3]);
+					const auto callbackState = new NamedFunctionCallbackState();
+					callbackState->name = property_name;
 
-				const auto callbackState = new NamedFunctionCallbackState();
-				callbackState->name = property_name;
+					// define setter function
+					JsValueRef js_function_ref;
+					const auto js_name = static_cast<JsValueRef>(JSString(setter_name));
+					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateSetterFunction<T>, callbackState, &js_function_ref));
+					js_prototype.SetProperty(setter_name, JSValue(js_function_ref));
+					ctor_object.SetProperty(setter_name, JSValue(js_function_ref));
 
-				// define setter function
-				JsValueRef js_function_ref;
-				const auto js_name = static_cast<JsValueRef>(JSString(setter_name));
-				ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateSetterFunction<T>, callbackState, &js_function_ref));
-				js_prototype.SetProperty(setter_name, JSValue(js_function_ref));
-				ctor_object.SetProperty(setter_name, JSValue(js_function_ref));
+					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
+				}
 
-				ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
-			}
+				initialize_properties_callback(ctor_object_ref);
 
-			initialize_properties_callback(ctor_object_ref);
-
-			ctor_object.SetProperty("prototype", js_prototype);
-		};
+				ctor_object.SetProperty("prototype", js_prototype);
+			};
+		});
+		return callback;
 	}
 
 	template<typename T>
@@ -331,82 +336,92 @@ namespace HAL {
 
 	template<typename T>
 	JSExportInitializePropertiesCallback JSExportClass<T>::GetInitializePropertiesCallback() const {
-		const auto parent_initialize_properties_callback = parent_initialize_properties_callback__;
-		return [=](JsValueRef* this_object_ref) {
-			if (parent_initialize_properties_callback) {
-				parent_initialize_properties_callback(this_object_ref);
-			}
-
-			JSContext js_context = JSContext(JSObject::GetContextRef());
-			JSObject this_object = JSObject(*this_object_ref);
-
-			// properties
-			for (const auto pair : name_to_getter_map__) {
-				const auto property_name = pair.first;
-
-				// get + capitalized property name
-				std::string getter_name = "get" + property_name;
-				getter_name[3] = toupper(getter_name[3]);
-
-				const auto setter_found = name_to_setter_map__.find(property_name) != name_to_setter_map__.end();
-
-				auto property_descriptor = js_context.CreateObject();
-
-				property_descriptor.SetProperty("get", this_object.GetProperty(getter_name));
-
-				if (setter_found) {
-					std::string setter_name = "set" + property_name;
-					setter_name[3] = toupper(setter_name[3]);
-					property_descriptor.SetProperty("set", this_object.GetProperty(setter_name));
+		static JSExportInitializePropertiesCallback callback;
+		static std::once_flag of;
+		std::call_once(of, [this]() {
+			const auto parent_initialize_properties_callback = parent_initialize_properties_callback__;
+			callback = [=](JsValueRef* this_object_ref) {
+				if (parent_initialize_properties_callback) {
+					parent_initialize_properties_callback(this_object_ref);
 				}
 
-				std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-				const auto wstr_name = converter.from_bytes(property_name);
+				JSContext js_context = JSContext(JSObject::GetContextRef());
+				JSObject this_object = JSObject(*this_object_ref);
 
-				JsPropertyIdRef propertyId;
-				ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(wstr_name.data(), &propertyId));
-				bool is_defined;
-				ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ref, propertyId, static_cast<JsValueRef>(property_descriptor), &is_defined));
-				assert(is_defined == true);
-			}
-		};
+				// properties
+				for (const auto pair : name_to_getter_map__) {
+					const auto property_name = pair.first;
+
+					// get + capitalized property name
+					std::string getter_name = "get" + property_name;
+					getter_name[3] = toupper(getter_name[3]);
+
+					const auto setter_found = name_to_setter_map__.find(property_name) != name_to_setter_map__.end();
+
+					auto property_descriptor = js_context.CreateObject();
+
+					property_descriptor.SetProperty("get", this_object.GetProperty(getter_name));
+
+					if (setter_found) {
+						std::string setter_name = "set" + property_name;
+						setter_name[3] = toupper(setter_name[3]);
+						property_descriptor.SetProperty("set", this_object.GetProperty(setter_name));
+					}
+
+					std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+					const auto wstr_name = converter.from_bytes(property_name);
+
+					JsPropertyIdRef propertyId;
+					ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(wstr_name.data(), &propertyId));
+					bool is_defined;
+					ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ref, propertyId, static_cast<JsValueRef>(property_descriptor), &is_defined));
+					assert(is_defined == true);
+				}
+			};
+		});
+		return callback;
 	}
 
 	template<typename T>
 	JSExportConstructObjectCallback JSExportClass<T>::GetConstructObjectCallback() const {
-		const auto initialize_properties_callback = GetInitializePropertiesCallback();
-		return [=](JsValueRef callee, bool isConstructCall, JsValueRef* arguments, unsigned short argumentCount, JsValueRef* this_object_ref) {
-			assert(isConstructCall);
+		static JSExportConstructObjectCallback callback;
+		static std::once_flag of;
+		std::call_once(of, [this]() {
+			const auto initialize_properties_callback = GetInitializePropertiesCallback();
+			callback = [=](JsValueRef callee, bool isConstructCall, JsValueRef* arguments, unsigned short argumentCount, JsValueRef* this_object_ref) {
+				assert(isConstructCall);
 
-			JsValueRef js_context_ref;
-			ASSERT_AND_THROW_JS_ERROR(JsGetCurrentContext(&js_context_ref));
+				JsValueRef js_context_ref;
+				ASSERT_AND_THROW_JS_ERROR(JsGetCurrentContext(&js_context_ref));
 
-			const auto js_context = JSContext(js_context_ref);
-			auto js_export_object_ptr = new T(js_context);
-			ASSERT_AND_THROW_JS_ERROR(JsCreateExternalObject(js_export_object_ptr, JSExportFinalize<T>, this_object_ref));
+				const auto js_context = JSContext(js_context_ref);
+				auto js_export_object_ptr = new T(js_context);
+				ASSERT_AND_THROW_JS_ERROR(JsCreateExternalObject(js_export_object_ptr, JSExportFinalize<T>, this_object_ref));
 
-			JSObject::RegisterJSExportObject(js_export_object_ptr, *this_object_ref);
+				JSObject::RegisterJSExportObject(js_export_object_ptr, *this_object_ref);
 
-			const auto js_arguments = detail::to_arguments(arguments, argumentCount);
-			auto this_object = JSObject(*this_object_ref);
+				const auto js_arguments = detail::to_arguments(arguments, argumentCount);
+				auto this_object = JSObject(*this_object_ref);
 
-			const auto js_prototype = JSObject(callee).GetProperty("prototype");
-			if (js_prototype.IsObject()) {
+				const auto js_prototype = JSObject(callee).GetProperty("prototype");
+				if (js_prototype.IsObject()) {
 
-				// functions
-				const auto prototype_obj = static_cast<JSObject>(js_prototype);
-				const auto properties = prototype_obj.GetProperties();
-				for (const auto pair : properties) {
-					this_object.SetProperty(pair.first, pair.second);
+					// functions
+					const auto prototype_obj = static_cast<JSObject>(js_prototype);
+					const auto properties = prototype_obj.GetProperties();
+					for (const auto pair : properties) {
+						this_object.SetProperty(pair.first, pair.second);
+					}
+
+					// properties
+					initialize_properties_callback(this_object_ref);
 				}
 
-				// properties
-				initialize_properties_callback(this_object_ref);
-			}
-
-			js_export_object_ptr->postInitialize(this_object);
-			js_export_object_ptr->postCallAsConstructor(js_context, js_arguments);
-		};
+				js_export_object_ptr->postInitialize(this_object);
+				js_export_object_ptr->postCallAsConstructor(js_context, js_arguments);
+			};
+		});
+		return callback;
 	}
 
 	template<typename T>

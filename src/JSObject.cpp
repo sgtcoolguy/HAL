@@ -263,8 +263,9 @@ namespace HAL {
 		// Create constructor
 		ASSERT_AND_THROW_JS_ERROR(JsCreateFunction(JSExportCallConstructor, nullptr, &js_object_ref__));
 		const auto ctor_init = js_class.GetInitializeConstructorCallback();
-		assert(ctor_init != nullptr);
-		ctor_init(&js_object_ref__);
+		if (ctor_init) {
+			ctor_init(&js_object_ref__);
+		}
 
 		const auto key = reinterpret_cast<std::uintptr_t>(js_object_ref__);
 		const auto position = js_ctor_ref_to_constructor_map__.find(key);
