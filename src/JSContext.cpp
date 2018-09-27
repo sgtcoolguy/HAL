@@ -111,7 +111,7 @@ namespace HAL {
 
   JSObject JSContext::CreateObject(const JSClass& js_class, const std::unordered_map<std::string, JSValue>& properties) const HAL_NOEXCEPT {
     HAL_JSCONTEXT_LOCK_GUARD;
-    auto object = CreateObject();
+    auto object = CreateObject(js_class);
     for (const auto kv : properties) {
       object.SetProperty(kv.first, kv.second);
     }
