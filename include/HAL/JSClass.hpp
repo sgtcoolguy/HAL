@@ -407,30 +407,13 @@ namespace HAL {
 				const auto js_context = JSContext(js_context_ref);
 				auto js_export_object_ptr = new T(js_context);
 				ASSERT_AND_THROW_JS_ERROR(JsCreateExternalObject(js_export_object_ptr, JSExportFinalize<T>, this_object_ref));
+				ASSERT_AND_THROW_JS_ERROR(JsSetPrototype(*this_object_ref, callee));
 
 				JSObject::RegisterJSExportObject(js_export_object_ptr, *this_object_ref);
 
 				const auto js_arguments = detail::to_arguments(arguments, argumentCount);
 				const auto ctor_object = JSObject(callee);
 				auto this_object = JSObject(*this_object_ref);
-
-				// functions
-				const auto properties = static_cast<std::vector<std::string>>(ctor_object.GetPropertyNames());
-				for (const auto property_name : properties) {
-					const auto found_property = name_to_getter_map__.find(property_name) != name_to_getter_map__.end();
-					if (found_property) {
-						continue;
-					}
-					const auto function_value = ctor_object.GetProperty(property_name);
-					JsValueType valueType;
-					JsGetValueType(static_cast<JsValueRef>(function_value), &valueType);
-					if (valueType == JsValueType::JsFunction) {
-						this_object.SetProperty(property_name, function_value);
-					}
-				}
-
-				// properties
-				initialize_properties_callback(this_object_ref);
 
 				js_export_object_ptr->postInitialize(this_object);
 				js_export_object_ptr->postCallAsConstructor(js_context, js_arguments);
