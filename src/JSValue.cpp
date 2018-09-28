@@ -36,7 +36,13 @@ namespace HAL {
 	}
 
 	JSValue::operator std::string() const {
-		return operator JSString();
+		if (IsString()) {
+			return static_cast<std::string>(JSString(js_value_ref__));
+		} else {
+			JsValueRef stringValue;
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToString(js_value_ref__, &stringValue));
+			return static_cast<std::string>(JSString(stringValue));
+		}
 	}
 
 	JSValue::operator bool() const HAL_NOEXCEPT {
@@ -107,18 +113,22 @@ namespace HAL {
 	}
 
 	JSValue::~JSValue() HAL_NOEXCEPT {
+		JsRelease(js_value_ref__, nullptr);
 	}
 
 	JSValue::JSValue(const JSValue& rhs) HAL_NOEXCEPT
 		: js_value_ref__(rhs.js_value_ref__) {
+		JsAddRef(js_value_ref__, nullptr);
 	}
 
 	JSValue::JSValue(JSValue&& rhs) HAL_NOEXCEPT
 		: js_value_ref__(rhs.js_value_ref__) {
+		JsAddRef(js_value_ref__, nullptr);
 	}
 
 	JSValue& JSValue::operator=(JSValue rhs) {
 		swap(rhs);
+		JsAddRef(js_value_ref__, nullptr);
 		return *this;
 	}
 
@@ -141,11 +151,13 @@ namespace HAL {
 		} else {
 			js_value_ref__ = js_string.js_string_ref__;
 		}
+		JsAddRef(js_value_ref__, nullptr);
 	}
 
 	// For interoperability with the JSRT API.
 	JSValue::JSValue(JsValueRef js_value_ref) HAL_NOEXCEPT
 		: js_value_ref__(js_value_ref) {
+		JsAddRef(js_value_ref__, nullptr);
 	}
 
 	bool operator==(const JSValue& lhs, const JSValue& rhs) HAL_NOEXCEPT {

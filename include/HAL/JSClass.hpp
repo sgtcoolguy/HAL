@@ -412,7 +412,6 @@ namespace HAL {
 				JSObject::RegisterJSExportObject(js_export_object_ptr, *this_object_ref);
 
 				const auto js_arguments = detail::to_arguments(arguments, argumentCount);
-				const auto ctor_object = JSObject(callee);
 				auto this_object = JSObject(*this_object_ref);
 
 				js_export_object_ptr->postInitialize(this_object);

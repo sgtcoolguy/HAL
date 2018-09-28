@@ -96,8 +96,8 @@ namespace HAL {
 		 @result This JavaScript string converted to a UTF-8 encoded
 		 std::string.
 		 */
-		operator std::string() const HAL_NOEXCEPT;
-		operator LPCWSTR()     const HAL_NOEXCEPT;
+		explicit operator std::string() const HAL_NOEXCEPT;
+		explicit operator LPCWSTR()     const HAL_NOEXCEPT;
 
 		~JSString()                   HAL_NOEXCEPT;
 		JSString(const JSString&)     HAL_NOEXCEPT;
