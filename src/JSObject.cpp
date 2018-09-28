@@ -54,7 +54,7 @@ namespace HAL {
 
 		JsPropertyIdRef propertyId;
 		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
-		ASSERT_AND_THROW_JS_ERROR(JsSetProperty(js_object_ref__, propertyId, static_cast<JsValueRef>(property_value), true));
+		ASSERT_AND_THROW_JS_ERROR(JsSetProperty(js_object_ref__, propertyId, static_cast<JsValueRef>(property_value), false));
 	}
 
 	void JSObject::SetProperty(unsigned property_index, const JSValue& property_value) {

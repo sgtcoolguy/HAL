@@ -269,18 +269,13 @@ namespace HAL {
 					const auto js_export_object_ptr = new T(js_context);
 					JSObject::RegisterJSExportObject(js_export_object_ptr, *ctor_object_ref);
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, js_export_object_ptr, JSExportConstructorBeforeCollect<T>));
-				}
-				else {
+				} else {
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, nullptr, JSExportConstructorBeforeCollect<T>));
 				}
 
 				if (parent_initialize_ctor_callback != nullptr) {
 					parent_initialize_ctor_callback(ctor_object_ref);
 				}
-
-				JsValueRef js_prototype_ref;
-				ASSERT_AND_THROW_JS_ERROR(JsGetPrototype(*ctor_object_ref, &js_prototype_ref));
-				auto js_prototype = JSObject(js_prototype_ref);
 
 				for (const auto pair : name_to_function_map__) {
 					const auto function_name = pair.first;
@@ -290,7 +285,6 @@ namespace HAL {
 					JsValueRef js_function_ref;
 					const auto js_name = static_cast<JsValueRef>(JSString(function_name));
 					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
-					js_prototype.SetProperty(function_name, JSValue(js_function_ref));
 					ctor_object.SetProperty(function_name, JSValue(js_function_ref));
 
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
@@ -310,7 +304,6 @@ namespace HAL {
 					JsValueRef js_function_ref;
 					const auto js_name = static_cast<JsValueRef>(JSString(getter_name));
 					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateGetterFunction<T>, callbackState, &js_function_ref));
-					js_prototype.SetProperty(getter_name, JSValue(js_function_ref));
 					ctor_object.SetProperty(getter_name, JSValue(js_function_ref));
 
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
@@ -330,15 +323,12 @@ namespace HAL {
 					JsValueRef js_function_ref;
 					const auto js_name = static_cast<JsValueRef>(JSString(setter_name));
 					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateSetterFunction<T>, callbackState, &js_function_ref));
-					js_prototype.SetProperty(setter_name, JSValue(js_function_ref));
 					ctor_object.SetProperty(setter_name, JSValue(js_function_ref));
 
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
 				}
 
 				initialize_properties_callback(ctor_object_ref);
-
-				JsSetPrototype(*ctor_object_ref, js_prototype_ref);
 			};
 		});
 		return callback;
@@ -357,13 +347,13 @@ namespace HAL {
 		static std::once_flag of;
 		std::call_once(of, [this]() {
 			const auto parent_initialize_properties_callback = parent_initialize_properties_callback__;
-			callback = [=](JsValueRef* this_object_ref) {
+			callback = [=](JsValueRef* this_object_ptr) {
 				if (parent_initialize_properties_callback) {
-					parent_initialize_properties_callback(this_object_ref);
+					parent_initialize_properties_callback(this_object_ptr);
 				}
 
 				const auto js_context = JSContext(JSObject::GetContextRef());
-				const auto this_object = JSObject(*this_object_ref);
+				auto this_object = JSObject(*this_object_ptr);
 
 				// properties
 				for (const auto pair : name_to_getter_map__) {
@@ -376,12 +366,13 @@ namespace HAL {
 					const auto setter_found = name_to_setter_map__.find(property_name) != name_to_setter_map__.end();
 
 					auto property_descriptor = js_context.CreateObject();
-
+					assert(this_object.HasProperty(getter_name));
 					property_descriptor.SetProperty("get", this_object.GetProperty(getter_name));
 
 					if (setter_found) {
 						std::string setter_name = "set" + property_name;
 						setter_name[3] = toupper(setter_name[3]);
+						assert(this_object.HasProperty(setter_name));
 						property_descriptor.SetProperty("set", this_object.GetProperty(setter_name));
 					}
 
@@ -393,7 +384,7 @@ namespace HAL {
 					JsPropertyIdRef propertyId;
 					ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(wstr_name.data(), &propertyId));
 					bool is_defined;
-					ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ref, propertyId, property_descriptor_ref, &is_defined));
+					ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ptr, propertyId, property_descriptor_ref, &is_defined));
 					assert(is_defined == true);
 				}
 			};
@@ -413,25 +404,32 @@ namespace HAL {
 				JsValueRef js_context_ref;
 				ASSERT_AND_THROW_JS_ERROR(JsGetCurrentContext(&js_context_ref));
 
-				JsValueRef js_prototype_ref;
-				ASSERT_AND_THROW_JS_ERROR(JsGetPrototype(callee, &js_prototype_ref));
-				const auto js_prototype = JSObject(js_prototype_ref);
-
 				const auto js_context = JSContext(js_context_ref);
 				auto js_export_object_ptr = new T(js_context);
 				ASSERT_AND_THROW_JS_ERROR(JsCreateExternalObject(js_export_object_ptr, JSExportFinalize<T>, this_object_ref));
-				ASSERT_AND_THROW_JS_ERROR(JsSetPrototype(*this_object_ref, js_prototype_ref));
 
 				JSObject::RegisterJSExportObject(js_export_object_ptr, *this_object_ref);
 
 				const auto js_arguments = detail::to_arguments(arguments, argumentCount);
+				const auto ctor_object = JSObject(callee);
 				auto this_object = JSObject(*this_object_ref);
 
+				const auto test0 = static_cast<std::vector<std::string>>(ctor_object.GetPropertyNames());
+				const auto test1 = name_to_function_map__;
+
 				// functions
-				const auto prototype_obj = static_cast<JSObject>(js_prototype);
-				const auto properties = prototype_obj.GetProperties();
-				for (const auto pair : properties) {
-					this_object.SetProperty(pair.first, pair.second);
+				const auto properties = static_cast<std::vector<std::string>>(ctor_object.GetPropertyNames());
+				for (const auto property_name : properties) {
+					const auto found_property = name_to_getter_map__.find(property_name) != name_to_getter_map__.end();
+					if (found_property) {
+						continue;
+					}
+					const auto function_value = ctor_object.GetProperty(property_name);
+					JsValueType valueType;
+					JsGetValueType(static_cast<JsValueRef>(function_value), &valueType);
+					if (valueType == JsValueType::JsFunction) {
+						this_object.SetProperty(property_name, function_value);
+					}
 				}
 
 				// properties
