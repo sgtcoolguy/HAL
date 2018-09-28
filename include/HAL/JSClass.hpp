@@ -414,9 +414,6 @@ namespace HAL {
 				const auto ctor_object = JSObject(callee);
 				auto this_object = JSObject(*this_object_ref);
 
-				const auto test0 = static_cast<std::vector<std::string>>(ctor_object.GetPropertyNames());
-				const auto test1 = name_to_function_map__;
-
 				// functions
 				const auto properties = static_cast<std::vector<std::string>>(ctor_object.GetPropertyNames());
 				for (const auto property_name : properties) {
