@@ -83,6 +83,10 @@ namespace HAL {
 	std::unordered_map<std::string, JSValue> JSObject::GetProperties() const HAL_NOEXCEPT {
 		std::unordered_map<std::string, JSValue> properties;
 		for (const auto& property_name : static_cast<std::vector<std::string>>(GetPropertyNames())) {
+			// Don't copy special properties
+			if (property_name == "caller" || property_name == "arguments" || property_name == "constructor") {
+				continue;
+			}
 			properties.emplace(property_name, GetProperty(property_name));
 		}
 		return properties;

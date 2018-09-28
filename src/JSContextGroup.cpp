@@ -41,10 +41,6 @@ namespace HAL {
 
 	const auto properties = baseObject.GetProperties();
 	for (const auto pair : properties) {
-		// Do not copy constructor property
-		if (pair.first == "constructor") {
-			continue;
-		}
 		globalObject.SetProperty(pair.first, pair.second);
 	}
 
