@@ -19,7 +19,7 @@ namespace HAL {
 			std::wstring output = L"";
 
 			JsPropertyIdRef propertyId;
-			JsGetPropertyIdFromName(L"stack", &propertyId);
+			JsGetPropertyIdFromName(property_name.data(), &propertyId);
 			bool hasProperty = false;
 			JsHasProperty(js_object_ref, propertyId, &hasProperty);
 
@@ -31,8 +31,9 @@ namespace HAL {
 					JsGetValueType(js_value_ref, &js_value_type);
 					if (js_value_type == JsValueType::JsString) {
 						LPCWSTR value = nullptr;
-						JsStringToPointer(js_value_ref, &value, nullptr);
-						if (value) {
+						std::size_t stringLength = 0;
+						JsStringToPointer(js_value_ref, &value, &stringLength);
+						if (value && stringLength > 0) {
 							output += value;
 							output += L"\r\n";
 						}

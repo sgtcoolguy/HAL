@@ -284,6 +284,9 @@ namespace HAL {
 	// For interoperability with the JSRT API.
 	JSObject::JSObject(JsValueRef js_object_ref)
 		: js_object_ref__(js_object_ref) {
+		if (js_object_ref__ == nullptr) {
+			ASSERT_AND_THROW_JS_ERROR(JsCreateObject(&js_object_ref__));
+		}
 		JsAddRef(js_object_ref__, nullptr);
 	}
 

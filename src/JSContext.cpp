@@ -95,7 +95,7 @@ namespace HAL {
 	}
 
 	JSObject JSContext::CreateObject() const HAL_NOEXCEPT {
-		return CreateObject(JSClass());
+		return JSObject(nullptr);
 	}
 
 	JSObject JSContext::CreateObject(const JSClass& js_class) const HAL_NOEXCEPT {

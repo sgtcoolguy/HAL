@@ -43,18 +43,30 @@ namespace HAL {
 	}
 
 	JSString::operator LPCWSTR() const HAL_NOEXCEPT {
+		JsValueRef js_value_ref = js_string_ref__;
+		JsValueType jsType;
+		ASSERT_AND_THROW_JS_ERROR(JsGetValueType(js_value_ref, &jsType));
+		if (jsType != JsValueType::JsString) {
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToString(js_string_ref__, &js_value_ref));
+		}
+
 		LPCWSTR stringValue = nullptr;
 		std::size_t stringLength;
-		ASSERT_AND_THROW_JS_ERROR(JsStringToPointer(js_string_ref__, &stringValue, &stringLength));
-
+		ASSERT_AND_THROW_JS_ERROR(JsStringToPointer(js_value_ref, &stringValue, &stringLength));
 		return stringValue;
 	}
 
 	JSString::operator std::string() const HAL_NOEXCEPT {
+		JsValueRef js_value_ref = js_string_ref__;
+		JsValueType jsType;
+		ASSERT_AND_THROW_JS_ERROR(JsGetValueType(js_value_ref, &jsType));
+		if (jsType != JsValueType::JsString) {
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToString(js_string_ref__, &js_value_ref));
+		}
+
 		LPCWSTR stringValue = nullptr;
 		std::size_t stringLength;
-		ASSERT_AND_THROW_JS_ERROR(JsStringToPointer(js_string_ref__, &stringValue, &stringLength));
-
+		ASSERT_AND_THROW_JS_ERROR(JsStringToPointer(js_value_ref, &stringValue, &stringLength));
 		if (stringLength > 0) {
 			std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 			return std::string(converter.to_bytes(stringValue));

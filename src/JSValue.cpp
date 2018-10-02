@@ -14,13 +14,28 @@
 namespace HAL {
 
 	JSString JSValue::ToJSONString(unsigned indent) const {
-		JsValueRef stringify;
-		ASSERT_AND_THROW_JS_ERROR(JsParseScript(L"JSON.stringify", 0, L"", &stringify));
+		// Create a function to get JSON.stringify
+		JsValueRef make_stringify;
+		ASSERT_AND_THROW_JS_ERROR(JsParseScript(L"JSON.stringify", 0, L"", &make_stringify));
 
+		JsValueRef global_object_ref;
+		JsGetGlobalObject(&global_object_ref);
+
+		// Get JSON.stringify
+		JsValueRef js_stringify_ref;
+		JsValueRef this_arguments[] = { global_object_ref };
+		ASSERT_AND_THROW_JS_ERROR(JsCallFunction(make_stringify, this_arguments, 1, &js_stringify_ref));
+
+#ifndef NDEBUG
+		JsValueType js_stringify_type;
+		JsGetValueType(js_stringify_ref, &js_stringify_type);
+		assert(js_stringify_type == JsValueType::JsFunction);
+#endif
+
+		// Call JSON.stringify
 		JsValueRef js_string_ref;
-
-		JsValueRef arguments[] = { js_value_ref__ };
-		ASSERT_AND_THROW_JS_ERROR(JsCallFunction(stringify, arguments, 1, &js_string_ref));
+		JsValueRef func_arguments[] = { global_object_ref, js_value_ref__ };
+		ASSERT_AND_THROW_JS_ERROR(JsCallFunction(js_stringify_ref, func_arguments, 2, &js_string_ref));
 
 		return JSString(js_string_ref);
 	}
