@@ -147,14 +147,28 @@ namespace HAL {
 	}
 
 	JSValue JSContext::JSEvaluateScript(const std::string& script) const {
-		return JSEvaluateScript(script, get_global_object());
-	}
-
-	JSValue JSContext::JSEvaluateScript(const std::string& script, JSObject this_object, const std::string& source_url) const {
 		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 		std::wstring script_string = L"";
 		std::wstring source_url_string = L"";
 		if (!script.empty()) {
+			script_string = converter.from_bytes(script);
+		}
+
+		JsValueRef executable;
+		ASSERT_AND_THROW_JS_ERROR(JsParseScript(script_string.data(), 0, source_url_string.data(), &executable));
+
+		auto js_executable = JSObject(executable);
+		assert(js_executable.IsFunction());
+
+		return js_executable(get_global_object());
+	}
+
+	JSValue JSContext::JSEvaluateScript(const std::string& content, JSObject this_object, const std::string& source_url) const {
+		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+		std::wstring script_string = L"";
+		std::wstring source_url_string = L"";
+		if (!content.empty()) {
+			std::string script = "(function() {\n {\n" + content + "\n}\n return this; })";
 			script_string = converter.from_bytes(script);
 		}
 		if (!source_url.empty()) {
@@ -164,10 +178,17 @@ namespace HAL {
 		JsValueRef executable;
 		ASSERT_AND_THROW_JS_ERROR(JsParseScript(script_string.data(), 0, source_url_string.data(), &executable));
 
-		auto js_executable = JSObject(executable);
+		auto js_executable = static_cast<JSObject>(JSObject(executable)(this_object));
 		assert(js_executable.IsFunction());
 
-		return js_executable(this_object);
+		JsValueRef executor;
+		ASSERT_AND_THROW_JS_ERROR(JsParseScript(L"(function(func, global) { return func.call(global); })", 0, L"", &executor));
+
+		auto js_executor = JSObject(executor)(this_object);
+		assert(js_executor.IsObject());
+
+		const std::vector<JSValue> executor_args = { js_executable, this_object };
+		return static_cast<JSObject>(js_executor)(executor_args, this_object);
 	}
 
 	bool JSContext::JSCheckScriptSyntax(const std::string& script, const std::string& source_url) const HAL_NOEXCEPT {
