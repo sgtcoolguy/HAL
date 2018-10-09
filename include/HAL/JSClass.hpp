@@ -285,7 +285,12 @@ namespace HAL {
 					JsValueRef js_function_ref;
 					const auto js_name = static_cast<JsValueRef>(JSString(function_name));
 					ASSERT_AND_THROW_JS_ERROR(JsCreateNamedFunction(js_name, JSExportCreateNamedFunction<T>, callbackState, &js_function_ref));
-					ctor_object.SetProperty(function_name, JSValue(js_function_ref));
+
+					auto js_function = JSObject(js_function_ref);
+					ctor_object.SetProperty(function_name, js_function);
+
+					// We save the constructor object so that we call it as static function.
+					js_function.SetProperty("__constructor", ctor_object);
 
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
 				}

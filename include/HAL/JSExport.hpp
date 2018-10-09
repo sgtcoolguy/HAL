@@ -49,13 +49,25 @@ namespace HAL {
 	void JSExport<T>::AddFunctionProperty(const std::string& name, CallNamedFunctionCallback<T> callback) {
 		js_class__.AddFunctionProperty(name, [name, callback](JSObject function_object, JSObject this_object, const std::vector<JSValue>& arguments) {
 			auto t = this_object.GetPrivate<T>();
+
+			// When there's no private data assigned to this_object, it probablly means this function is assigned to different parent.
+			// In that case we try to rescue private data from constructor so that we call it as static function.
+			if (t == nullptr && function_object.HasProperty("__constructor")) {
+				t = static_cast<JSObject>(function_object.GetProperty("__constructor")).GetPrivate<T>();
+			}
+
 			if (t) {
 				return callback(*t, arguments, this_object);
 			}
-			// This means this_object has no JSExportObject assigned,
-			// probably because constructor prototype function is called directly.
-			// In this case we just do nothing but return undefined.
-			return this_object.get_context().CreateUndefined();
+
+			// If we still can't find the parent, we just throw an error.
+			const auto js_context = this_object.get_context();
+			const auto undefined = js_context.CreateUndefined();
+
+			const auto error = js_context.CreateError("Callback for the function " + name + " is not found.");
+			JsSetException(static_cast<JsValueRef>(error));
+
+			return undefined;
 		});
 	}
 

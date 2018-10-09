@@ -123,6 +123,13 @@ namespace HAL {
 	JSArray JSContext::CreateArray(const std::vector<JSValue>& arguments) const {
 		JsValueRef arrayValue;
 		ASSERT_AND_THROW_JS_ERROR(JsCreateArray(arguments.size(), &arrayValue));
+
+		for (std::size_t i = 0; i < arguments.size(); i++) {
+			JsValueRef index;
+			ASSERT_AND_THROW_JS_ERROR(JsIntToNumber(static_cast<int>(i), &index));
+			ASSERT_AND_THROW_JS_ERROR(JsSetIndexedProperty(arrayValue, index, static_cast<JsValueRef>(arguments.at(i))));
+		}
+
 		return JSArray(arrayValue, arguments);
 	}
 
@@ -132,18 +139,10 @@ namespace HAL {
 		return JSError(errorValue);
 	}
 
-	JSError JSContext::CreateError(const std::vector<JSValue>& arguments) const {
-		if (arguments.size() > 0) {
-			JsValueRef errorValue;
-			ASSERT_AND_THROW_JS_ERROR(JsCreateError(static_cast<JsValueRef>(arguments.at(0)), &errorValue));
-
-			// fileName
-			ASSERT_AND_THROW_JS_ERROR(JsSetProperty(errorValue, 0, 0, false));
-
-			return JSError(errorValue);
-		} else {
-			return CreateError();
-		}
+	JSError JSContext::CreateError(const std::string& message) const HAL_NOEXCEPT {
+		JsValueRef errorValue;
+		ASSERT_AND_THROW_JS_ERROR(JsCreateError(static_cast<JsValueRef>(CreateString(message)), &errorValue));
+		return JSError(errorValue);
 	}
 
 	JSValue JSContext::JSEvaluateScript(const std::string& script) const {
