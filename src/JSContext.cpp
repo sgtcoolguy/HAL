@@ -145,12 +145,15 @@ namespace HAL {
 		return JSError(errorValue);
 	}
 
-	JSValue JSContext::JSEvaluateScript(const std::string& script) const {
+	JSValue JSContext::JSEvaluateScript(const std::string& script, const std::string& source_url) const {
 		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 		std::wstring script_string = L"";
 		std::wstring source_url_string = L"";
 		if (!script.empty()) {
 			script_string = converter.from_bytes(script);
+		}
+		if (!source_url.empty()) {
+			source_url_string = converter.from_bytes(source_url);
 		}
 
 		JsValueRef executable;

@@ -256,7 +256,7 @@ namespace HAL {
      threw an exception.
      
      */
-    JSValue JSEvaluateScript(const std::string& script                      ) const;
+    JSValue JSEvaluateScript(const std::string& script, const std::string& source_url = "") const;
     JSValue JSEvaluateScript(const std::string& script, JSObject this_object, const std::string& source_url = "") const;
     
     /*!
