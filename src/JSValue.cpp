@@ -62,27 +62,48 @@ namespace HAL {
 
 	JSValue::operator bool() const HAL_NOEXCEPT {
 		bool boolValue;
-		ASSERT_AND_THROW_JS_ERROR(JsBooleanToBool(js_value_ref__, &boolValue));
+		if (IsBoolean()) {
+			ASSERT_AND_THROW_JS_ERROR(JsBooleanToBool(js_value_ref__, &boolValue));
+		} else {
+			JsValueRef booleanValue;
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToBoolean(js_value_ref__, &booleanValue));
+			ASSERT_AND_THROW_JS_ERROR(JsBooleanToBool(booleanValue, &boolValue));
+		}
 		return boolValue;
 	}
 
 	JSValue::operator double() const {
 		double doubleValue;
-		ASSERT_AND_THROW_JS_ERROR(JsNumberToDouble(js_value_ref__, &doubleValue));
+		if (IsNumber()) {
+			ASSERT_AND_THROW_JS_ERROR(JsNumberToDouble(js_value_ref__, &doubleValue));
+		} else {
+			JsValueRef numberValue;
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToNumber(js_value_ref__, &numberValue));
+			ASSERT_AND_THROW_JS_ERROR(JsNumberToDouble(numberValue, &doubleValue));
+		}
 		return doubleValue;
 	}
 
 	JSValue::operator int32_t() const {
 		int intValue;
-		ASSERT_AND_THROW_JS_ERROR(JsNumberToInt(js_value_ref__, &intValue));
+		if (IsNumber()) {
+			ASSERT_AND_THROW_JS_ERROR(JsNumberToInt(js_value_ref__, &intValue));
+		} else {
+			JsValueRef numberValue;
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToNumber(js_value_ref__, &numberValue));
+			ASSERT_AND_THROW_JS_ERROR(JsNumberToInt(numberValue, &intValue));
+		}
 		return intValue;
 	}
 
 	JSValue::operator JSObject() const {
-		if (!IsObject()) {
-			detail::ThrowRuntimeError(std::string("Can't convert value to object"));
+		if (IsObject()) {
+			return JSObject(js_value_ref__);
+		} else {
+			JsValueRef object_ref;
+			ASSERT_AND_THROW_JS_ERROR(JsConvertValueToObject(js_value_ref__, &object_ref));
+			return JSObject(object_ref);
 		}
-		return JSObject(js_value_ref__);
 	}
 
 	bool JSValue::IsUndefined() const HAL_NOEXCEPT {
