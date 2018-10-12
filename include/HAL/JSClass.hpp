@@ -279,6 +279,11 @@ namespace HAL {
 
 				for (const auto pair : name_to_function_map__) {
 					const auto function_name = pair.first;
+
+					if (ctor_object.HasProperty(function_name)) {
+						continue;
+					}
+
 					const auto callbackState = new NamedFunctionCallbackState();
 					callbackState->name = function_name;
 
@@ -302,6 +307,15 @@ namespace HAL {
 					std::string getter_name = "get" + property_name;
 					getter_name[3] = toupper(getter_name[3]);
 
+					// if there is a function name that is already defined, there we just use different name.
+					if (name_to_function_map__.find(getter_name) != name_to_function_map__.end()) {
+						getter_name = "__" + getter_name;
+					}
+
+					if (ctor_object.HasProperty(getter_name)) {
+						continue;
+					}
+
 					const auto callbackState = new NamedFunctionCallbackState();
 					callbackState->name = property_name;
 
@@ -320,6 +334,15 @@ namespace HAL {
 					// set + capitalized property name
 					std::string setter_name = "set" + property_name;
 					setter_name[3] = toupper(setter_name[3]);
+
+					// if there is a function name that is already defined, there we just use different name.
+					if (name_to_function_map__.find(setter_name) != name_to_function_map__.end()) {
+						setter_name = "__" + setter_name;
+					}
+
+					if (ctor_object.HasProperty(setter_name)) {
+						continue;
+					}
 
 					const auto callbackState = new NamedFunctionCallbackState();
 					callbackState->name = property_name;
@@ -372,6 +395,11 @@ namespace HAL {
 					std::string getter_name = "get" + property_name;
 					getter_name[3] = toupper(getter_name[3]);
 
+					// if there is a function name that is already defined, there we just use different name.
+					if (name_to_function_map__.find(getter_name) != name_to_function_map__.end()) {
+						getter_name = "__" + getter_name;
+					}
+
 					const auto setter_found = name_to_setter_map__.find(property_name) != name_to_setter_map__.end();
 
 					auto property_descriptor = js_context.CreateObject();
@@ -387,6 +415,12 @@ namespace HAL {
 					if (setter_found) {
 						std::string setter_name = "set" + property_name;
 						setter_name[3] = toupper(setter_name[3]);
+
+						// if there is a function name that is already defined, there we just use different name.
+						if (name_to_function_map__.find(setter_name) != name_to_function_map__.end()) {
+							setter_name = "__" + setter_name;
+						}
+
 						assert(this_object.HasProperty(setter_name));
 						property_descriptor.SetProperty("set", this_object.GetProperty(setter_name));
 					}
