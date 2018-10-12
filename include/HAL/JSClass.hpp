@@ -280,10 +280,6 @@ namespace HAL {
 				for (const auto pair : name_to_function_map__) {
 					const auto function_name = pair.first;
 
-					if (ctor_object.HasProperty(function_name)) {
-						continue;
-					}
-
 					const auto callbackState = new NamedFunctionCallbackState();
 					callbackState->name = function_name;
 
@@ -312,10 +308,6 @@ namespace HAL {
 						getter_name = "__" + getter_name;
 					}
 
-					if (ctor_object.HasProperty(getter_name)) {
-						continue;
-					}
-
 					const auto callbackState = new NamedFunctionCallbackState();
 					callbackState->name = property_name;
 
@@ -338,10 +330,6 @@ namespace HAL {
 					// if there is a function name that is already defined, there we just use different name.
 					if (name_to_function_map__.find(setter_name) != name_to_function_map__.end()) {
 						setter_name = "__" + setter_name;
-					}
-
-					if (ctor_object.HasProperty(setter_name)) {
-						continue;
 					}
 
 					const auto callbackState = new NamedFunctionCallbackState();
@@ -386,10 +374,6 @@ namespace HAL {
 				// properties
 				for (const auto pair : name_to_getter_map__) {
 					const auto property_name = pair.first;
-
-					if (this_object.HasProperty(property_name)) {
-						continue;
-					}
 
 					// get + capitalized property name
 					std::string getter_name = "get" + property_name;
