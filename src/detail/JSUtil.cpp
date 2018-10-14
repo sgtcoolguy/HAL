@@ -15,6 +15,15 @@
 namespace HAL {
 	namespace detail {
 
+		std::wstring to_wstring(const std::string& src) {
+			auto const size = MultiByteToWideChar(CP_ACP, 0U, src.data(), -1, nullptr, 0U);
+			std::vector<wchar_t> stringValue(size, L'\0');
+			MultiByteToWideChar(CP_ACP, 0U, src.data(), -1, stringValue.data(), stringValue.size());
+			stringValue.resize(std::char_traits<wchar_t>::length(stringValue.data()));
+			stringValue.shrink_to_fit();
+			return std::wstring(stringValue.begin(), stringValue.end());
+		}
+
 		std::wstring GetJSObjectPropertyAsString(const JsValueRef js_object_ref, std::wstring property_name) {
 			std::wstring output = L"";
 

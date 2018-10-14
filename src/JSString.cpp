@@ -23,8 +23,7 @@ namespace HAL {
 			return;
 		}
 
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto stringValue = converter.from_bytes(string);
+		auto stringValue = detail::to_wstring(string);
 		ASSERT_AND_THROW_JS_ERROR(JsPointerToString(stringValue.data(), stringValue.size(), &js_string_ref__));
 	}
 
