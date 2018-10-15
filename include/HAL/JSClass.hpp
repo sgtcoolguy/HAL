@@ -405,11 +405,9 @@ namespace HAL {
 
 					auto property_descriptor = js_context.CreateObject();
 					const auto property_descriptor_ref = static_cast<JsValueRef>(property_descriptor);
-#ifndef NDEBUG
-					JsValueType js_descriptor_type;
-					JsGetValueType(property_descriptor_ref, &js_descriptor_type);
-					assert(js_descriptor_type == JsValueType::JsObject);
-#endif
+
+					property_descriptor.SetProperty("enumerable", js_context.CreateBoolean(true));
+
 					assert(this_object.HasProperty(getter_name));
 					property_descriptor.SetProperty("get", this_object.GetProperty(getter_name));
 
@@ -424,6 +422,8 @@ namespace HAL {
 
 						assert(this_object.HasProperty(setter_name));
 						property_descriptor.SetProperty("set", this_object.GetProperty(setter_name));
+					} else {
+						property_descriptor.SetProperty("configurable", js_context.CreateBoolean(false));
 					}
 
 					std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;

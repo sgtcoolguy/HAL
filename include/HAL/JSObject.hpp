@@ -414,7 +414,8 @@ namespace HAL {
 			return std::shared_ptr<T>(std::make_shared<JSObject>(*this), dynamic_cast<T*>(static_cast<JSExportObject*>(private_ptr)));
 		}
 
-		// JSExport object may be assigined to __C property as a global object and function can't have private data.
+		// When objects can't have private data (like global object and functions),
+		// it might have __C property that holds private object.
 		if (HasProperty("__C")) {
 			const auto ctor_ptr = static_cast<JSObject>(GetProperty("__C")).GetPrivate<T>();
 			if (ctor_ptr) {
