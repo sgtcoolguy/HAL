@@ -44,12 +44,8 @@ namespace HAL {
 		globalObject.SetProperty(pair.first, pair.second);
 	}
 
-	// Register base object of global object to retain functions
-	const auto js_global_object_ref = static_cast<JsValueRef>(globalObject);
-	const auto js_base_object_ref = static_cast<JsValueRef>(baseObject);
-	const auto base_object_ptr = baseObject.GetPrivate<JSExportObject>().get();
-	JSObject::RegisterGlobalObject(base_object_ptr, js_global_object_ref);
-	JsAddRef(js_base_object_ref, nullptr);
+	// Retain base object of global object
+	globalObject.SetProperty("__C", baseObject);
 
 	return js_context;
   }
@@ -63,9 +59,6 @@ namespace HAL {
 	  JsContextRef context;
 	  ASSERT_AND_THROW_JS_ERROR(JsGetCurrentContext(&context));
 	  assert(context != nullptr);
-
-	  const auto js_global_object_ref = static_cast<JsValueRef>(JSContext(context).get_global_object());
-	  JSObject::UnregisterGlobalObject(js_global_object_ref);
 
 	  ASSERT_AND_THROW_JS_ERROR(JsSetCurrentContext(nullptr));
 	  ASSERT_AND_THROW_JS_ERROR(JsDisposeRuntime(js_runtime_handle__));

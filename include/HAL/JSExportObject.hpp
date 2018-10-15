@@ -19,7 +19,11 @@ namespace HAL {
 	public:
 		JSExportObject(const JSContext& js_context) HAL_NOEXCEPT;
 
-		virtual ~JSExportObject() HAL_NOEXCEPT;
+		virtual ~JSExportObject() HAL_NOEXCEPT {
+			if (ctor_func__) {
+				JsRelease(ctor_func__, nullptr);
+			}
+		}
 		virtual void postInitialize(JSObject& js_object);
 		virtual void postCallAsConstructor(const JSContext&, const std::vector<JSValue>&);
 
@@ -29,9 +33,25 @@ namespace HAL {
 			return js_context__;
 		}
 
+		virtual JsValueRef get_constructor() {
+			return ctor_func__;
+		}
+
+		virtual void set_constructor(const JsValueRef ctor_func) {
+			ctor_func__ = ctor_func;
+			JsAddRef(ctor_func__, nullptr);
+		}
+
 		static void JSExportInitialize();
+
 	protected:
 		JSContext js_context__;
+
+		//
+		// Constructor function for this object.
+		// Used only when this object is acting as a constructor.
+		// 
+		JsValueRef ctor_func__{ nullptr };
 	};
 
 } // namespace HAL {

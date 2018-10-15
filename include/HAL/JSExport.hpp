@@ -52,8 +52,8 @@ namespace HAL {
 
 			// When there's no private data assigned to this_object, it probablly means this function is assigned to different parent.
 			// In that case we try to rescue private data from constructor so that we call it as static function.
-			if (t == nullptr && function_object.HasProperty("__constructor")) {
-				t = static_cast<JSObject>(function_object.GetProperty("__constructor")).GetPrivate<T>();
+			if (t == nullptr && function_object.HasProperty("__C")) {
+				t = static_cast<JSObject>(function_object.GetProperty("__C")).GetPrivate<T>();
 			}
 
 			const auto js_context = this_object.get_context();

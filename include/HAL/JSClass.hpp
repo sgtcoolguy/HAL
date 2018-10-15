@@ -237,21 +237,28 @@ namespace HAL {
 	}
 
 	template<typename T>
-	void CALLBACK JSExportConstructorBeforeCollect(JsRef ref, void* callbackState) {
-		JSObject::RemoveObjectConstructorCallback(static_cast<JsValueRef>(ref));
-		if (callbackState != nullptr) {
-			const auto js_export_object_ptr = static_cast<T*>(callbackState);
-			JSObject::UnregisterJSExportObject(js_export_object_ptr);
-			delete js_export_object_ptr;
-		}
-	}
-
-	template<typename T>
 	void CALLBACK JSExportNamedFunctionBeforeCollect(JsRef ref, void* callbackState) {
 		const auto state = static_cast<NamedFunctionCallbackState*>(callbackState);
 		assert(!state->name.empty());
 		state->name.clear();
 		delete state;
+	}
+
+	template<typename T>
+	JsValueRef CALLBACK JSExportCallConstructor(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount, void *callbackState) {
+		if (isConstructCall) {
+			const auto ctor_object_ref = static_cast<JsValueRef>(callbackState);
+			const auto callback = JSObject::GetObjectInitializerCallback(ctor_object_ref);
+			if (callback) {
+				JsValueRef js_object_ref = nullptr;
+				callback(ctor_object_ref, isConstructCall, arguments, argumentCount, &js_object_ref);
+				assert(js_object_ref);
+				return js_object_ref;
+			}
+		}
+
+		// This means JSExportObject is called as a function.
+		return JSObject::GetUndefinedRef();
 	}
 
 	template<typename T>
@@ -263,15 +270,21 @@ namespace HAL {
 			const auto initialize_properties_callback = GetInitializePropertiesCallback();
 			callback = [=](JsValueRef* ctor_object_ref) {
 				JSContext js_context = JSContext(JSObject::GetContextRef());
-				JSObject ctor_object = JSObject(*ctor_object_ref);
 
-				if (!JSObject::IsJSExportObjectRegistered(*ctor_object_ref)) {
-					const auto js_export_object_ptr = new T(js_context);
+				// Create constructor
+				if (*ctor_object_ref == nullptr) {
+					auto js_export_object_ptr = new T(js_context);
+					ASSERT_AND_THROW_JS_ERROR(JsCreateExternalObject(js_export_object_ptr, JSExportFinalize<T>, ctor_object_ref));
 					JSObject::RegisterJSExportObject(js_export_object_ptr, *ctor_object_ref);
-					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, js_export_object_ptr, JSExportConstructorBeforeCollect<T>));
-				} else {
-					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(*ctor_object_ref, nullptr, JSExportConstructorBeforeCollect<T>));
+
+					JsValueRef ctor_func_ref;
+					ASSERT_AND_THROW_JS_ERROR(JsCreateFunction(JSExportCallConstructor<T>, *ctor_object_ref, &ctor_func_ref));
+
+					js_export_object_ptr->set_constructor(ctor_func_ref);
 				}
+
+				assert(*ctor_object_ref != nullptr);
+				JSObject ctor_object = JSObject(*ctor_object_ref);
 
 				if (parent_initialize_ctor_callback != nullptr) {
 					parent_initialize_ctor_callback(ctor_object_ref);
@@ -291,7 +304,7 @@ namespace HAL {
 					ctor_object.SetProperty(function_name, js_function);
 
 					// We save the constructor object so that we call it as static function.
-					js_function.SetProperty("__constructor", ctor_object);
+					js_function.SetProperty("__C", ctor_object);
 
 					ASSERT_AND_THROW_JS_ERROR(JsSetObjectBeforeCollectCallback(js_function_ref, callbackState, JSExportNamedFunctionBeforeCollect<T>));
 				}

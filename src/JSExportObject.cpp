@@ -15,10 +15,6 @@ namespace HAL {
 		// NOTHING TO DO
 	}
 
-	JSExportObject::~JSExportObject() HAL_NOEXCEPT {
-		// NOTHING TO DO
-	}
-
 	void JSExportObject::postInitialize(JSObject& js_object) {
 		// NOTHING TO DO
 	}
