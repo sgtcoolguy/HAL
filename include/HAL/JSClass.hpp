@@ -388,6 +388,10 @@ namespace HAL {
 				for (const auto pair : name_to_getter_map__) {
 					const auto property_name = pair.first;
 
+					if (this_object.HasProperty(property_name)) {
+						continue;
+					}
+
 					// get + capitalized property name
 					std::string getter_name = "get" + property_name;
 					getter_name[3] = toupper(getter_name[3]);
