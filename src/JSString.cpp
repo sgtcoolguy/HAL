@@ -25,6 +25,7 @@ namespace HAL {
 
 		auto stringValue = detail::to_wstring(string);
 		ASSERT_AND_THROW_JS_ERROR(JsPointerToString(stringValue.data(), stringValue.size(), &js_string_ref__));
+		JsAddRef(js_string_ref__, nullptr);
 	}
 
 	const std::size_t JSString::length() const  HAL_NOEXCEPT {
@@ -74,18 +75,22 @@ namespace HAL {
 	}
 
 	JSString::~JSString() HAL_NOEXCEPT {
+		JsRelease(js_string_ref__, nullptr);
 	}
 
 	JSString::JSString(const JSString& rhs) HAL_NOEXCEPT
 		: js_string_ref__(rhs.js_string_ref__) {
+		JsAddRef(js_string_ref__, nullptr);
 	}
 
 	JSString::JSString(JSString&& rhs) HAL_NOEXCEPT
 		: js_string_ref__(rhs.js_string_ref__) {
+		JsAddRef(js_string_ref__, nullptr);
 	}
 
 	JSString& JSString::operator=(JSString rhs) HAL_NOEXCEPT {
 		swap(rhs);
+		JsAddRef(js_string_ref__, nullptr);
 		return *this;
 	}
 
@@ -100,6 +105,7 @@ namespace HAL {
 	// For interoperability with the JSRT API.
 	JSString::JSString(JsValueRef js_string_ref) HAL_NOEXCEPT
 		: js_string_ref__(js_string_ref) {
+		JsAddRef(js_string_ref__, nullptr);
 	}
 
 	bool operator==(const JSString& lhs, const JSString& rhs) {
