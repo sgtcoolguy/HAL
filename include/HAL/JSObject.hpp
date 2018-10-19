@@ -333,6 +333,9 @@ namespace HAL {
 
 		static JSExportConstructObjectCallback GetObjectInitializerCallback(const JsValueRef js_ctor_ref);
 		static void RemoveObjectConstructorCallback(const JsValueRef js_ctor_ref);
+
+		static JsPropertyIdRef GetJsPropertyIdRef(const std::string& name) HAL_NOEXCEPT;
+
 	protected:
 
 		// Prevent heap based objects.
@@ -384,8 +387,6 @@ namespace HAL {
 		 @result true if this object can store private data.
 		 */
 		virtual bool SetPrivate(void* data) const HAL_NOEXCEPT final;
-
-		static JsPropertyIdRef GetJsPropertyIdRef(const std::string& name) HAL_NOEXCEPT;
 
 		// JSContext (and already friended JSExportClass) use the
 		// following constructor.

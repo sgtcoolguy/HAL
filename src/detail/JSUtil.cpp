@@ -8,6 +8,7 @@
 
 #include "HAL/detail/JSUtil.hpp"
 #include "HAL/JSValue.hpp"
+#include "HAL/JSObject.hpp"
 #include <algorithm>
 #include <locale>
 #include <codecvt>
@@ -24,11 +25,11 @@ namespace HAL {
 			return std::wstring(stringValue.begin(), stringValue.end());
 		}
 
-		std::wstring GetJSObjectPropertyAsString(const JsValueRef js_object_ref, std::wstring property_name) {
+		std::wstring GetJSObjectPropertyAsString(const JsValueRef js_object_ref, const std::string& property_name) {
 			std::wstring output = L"";
 
-			JsPropertyIdRef propertyId;
-			JsGetPropertyIdFromName(property_name.data(), &propertyId);
+			JsPropertyIdRef propertyId = JSObject::GetJsPropertyIdRef(property_name);
+
 			bool hasProperty = false;
 			JsHasProperty(js_object_ref, propertyId, &hasProperty);
 
@@ -104,8 +105,8 @@ namespace HAL {
 				JsValueRef js_exception_ref = nullptr;
 				JsGetAndClearException(&js_exception_ref);
 				if (js_exception_ref != nullptr) {
-					output += GetJSObjectPropertyAsString(js_exception_ref, L"message");
-					output += GetJSObjectPropertyAsString(js_exception_ref, L"stack");
+					output += GetJSObjectPropertyAsString(js_exception_ref, "message");
+					output += GetJSObjectPropertyAsString(js_exception_ref, "stack");
 				}
 			}
 

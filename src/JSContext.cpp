@@ -14,7 +14,6 @@
 #include "HAL/JSArray.hpp"
 #include "HAL/JSError.hpp"
 #include "HAL/detail/JSUtil.hpp"
-#include <codecvt>
 
 namespace HAL {
 
@@ -150,14 +149,13 @@ namespace HAL {
 	}
 
 	JSValue JSContext::JSEvaluateScript(const std::string& script, const std::string& source_url) const {
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 		std::wstring script_string = L"";
 		std::wstring source_url_string = L"";
 		if (!script.empty()) {
-			script_string = converter.from_bytes(script);
+			script_string = detail::to_wstring(script);
 		}
 		if (!source_url.empty()) {
-			source_url_string = converter.from_bytes(source_url);
+			source_url_string = detail::to_wstring(source_url);
 		}
 
 		JsValueRef executable;
@@ -170,15 +168,14 @@ namespace HAL {
 	}
 
 	JSValue JSContext::JSEvaluateScript(const std::string& content, JSObject this_object, const std::string& source_url) const {
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 		std::wstring script_string = L"";
 		std::wstring source_url_string = L"";
 		if (!content.empty()) {
 			std::string script = "(function() {\n {\n" + content + "\n}\n return this; })";
-			script_string = converter.from_bytes(script);
+			script_string = detail::to_wstring(script);
 		}
 		if (!source_url.empty()) {
-			source_url_string = converter.from_bytes(source_url);
+			source_url_string = detail::to_wstring(source_url);
 		}
 
 		JsValueRef executable;

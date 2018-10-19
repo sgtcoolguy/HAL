@@ -16,7 +16,6 @@
 #include <unordered_map>
 #include <cassert>
 #include <cctype>
-#include <codecvt>
 
 namespace HAL {
 
@@ -426,13 +425,8 @@ namespace HAL {
 						property_descriptor.SetProperty("configurable", js_context.CreateBoolean(false));
 					}
 
-					std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-					const auto wstr_name = converter.from_bytes(property_name);
-
-					JsPropertyIdRef propertyId;
-					ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(wstr_name.data(), &propertyId));
 					bool is_defined;
-					ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ptr, propertyId, property_descriptor_ref, &is_defined));
+					ASSERT_AND_THROW_JS_ERROR(JsDefineProperty(*this_object_ptr, JSObject::GetJsPropertyIdRef(property_name), property_descriptor_ref, &is_defined));
 					assert(is_defined == true);
 				}
 			};

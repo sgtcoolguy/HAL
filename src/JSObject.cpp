@@ -13,7 +13,6 @@
 #include "HAL/JSError.hpp"
 #include "HAL/JSArray.hpp"
 #include "HAL/detail/JSUtil.hpp"
-#include <codecvt>
 #include <cassert>
 
 namespace HAL {
@@ -25,8 +24,7 @@ namespace HAL {
 		}
 
 		JsPropertyIdRef propertyId;
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto name = converter.from_bytes(property_name);
+		const auto name = detail::to_wstring(property_name);
 		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
 		name_to_property_id_map__.emplace(property_name, propertyId);
 

@@ -51,7 +51,7 @@ namespace HAL {
 			std::string js_nativeStack__;
 		};
 
-		std::wstring GetJSObjectPropertyAsString(const JsValueRef js_object_ref, std::wstring property_name);
+		std::wstring GetJSObjectPropertyAsString(const JsValueRef js_object_ref, const std::string& property_name);
 
 		HAL_EXPORT void CheckAndThrowChakraRuntimeError(const JsErrorCode&);
 		HAL_EXPORT void ThrowRuntimeError(const std::string& message);
