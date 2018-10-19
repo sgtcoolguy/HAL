@@ -18,25 +18,30 @@
 
 namespace HAL {
 
-	bool JSObject::HasProperty(const std::string& property_name) const HAL_NOEXCEPT {
+	JsPropertyIdRef JSObject::GetJsPropertyIdRef(const std::string& property_name) HAL_NOEXCEPT {
+		const auto position = name_to_property_id_map__.find(property_name);
+		if (position != name_to_property_id_map__.end()) {
+			return position->second;
+		}
+
+		JsPropertyIdRef propertyId;
 		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 		const auto name = converter.from_bytes(property_name);
-
-		bool hasProperty;
-		JsPropertyIdRef propertyId;
 		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
-		ASSERT_AND_THROW_JS_ERROR(JsHasProperty(js_object_ref__, propertyId, &hasProperty));
+		name_to_property_id_map__.emplace(property_name, propertyId);
+
+		return propertyId;
+	}
+
+	bool JSObject::HasProperty(const std::string& property_name) const HAL_NOEXCEPT {
+		bool hasProperty;
+		ASSERT_AND_THROW_JS_ERROR(JsHasProperty(js_object_ref__, GetJsPropertyIdRef(property_name), &hasProperty));
 		return hasProperty;
 	}
 
 	JSValue JSObject::GetProperty(const std::string& property_name) const {
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto name = converter.from_bytes(property_name);
-
 		JsValueRef value;
-		JsPropertyIdRef propertyId;
-		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
-		ASSERT_AND_THROW_JS_ERROR(JsGetProperty(js_object_ref__, propertyId, &value));
+		ASSERT_AND_THROW_JS_ERROR(JsGetProperty(js_object_ref__, GetJsPropertyIdRef(property_name), &value));
 		return value;
 	}
 
@@ -49,12 +54,7 @@ namespace HAL {
 	}
 
 	void JSObject::SetProperty(const std::string& property_name, const JSValue& property_value) {
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto name = converter.from_bytes(property_name);
-
-		JsPropertyIdRef propertyId;
-		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
-		ASSERT_AND_THROW_JS_ERROR(JsSetProperty(js_object_ref__, propertyId, static_cast<JsValueRef>(property_value), false));
+		ASSERT_AND_THROW_JS_ERROR(JsSetProperty(js_object_ref__, GetJsPropertyIdRef(property_name), static_cast<JsValueRef>(property_value), false));
 	}
 
 	void JSObject::SetProperty(unsigned property_index, const JSValue& property_value) {
@@ -64,13 +64,8 @@ namespace HAL {
 	}
 
 	bool JSObject::DeleteProperty(const std::string& property_name) {
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		const auto name = converter.from_bytes(property_name);
-
 		JsValueRef result;
-		JsPropertyIdRef propertyId;
-		ASSERT_AND_THROW_JS_ERROR(JsGetPropertyIdFromName(name.data(), &propertyId));
-		ASSERT_AND_THROW_JS_ERROR(JsDeleteProperty(js_object_ref__, propertyId, true, &result));
+		ASSERT_AND_THROW_JS_ERROR(JsDeleteProperty(js_object_ref__, GetJsPropertyIdRef(property_name), true, &result));
 		return static_cast<bool>(JSValue(result));
 	}
 
@@ -178,6 +173,7 @@ namespace HAL {
 		swap(js_object_ref__, other.js_object_ref__);
 	}
 
+	std::unordered_map<std::string, const JsPropertyIdRef> JSObject::name_to_property_id_map__;
 	std::unordered_map<std::uintptr_t, const JsValueRef> JSObject::js_private_data_to_js_object_ref_map__;
 	std::unordered_map<std::uintptr_t, JSExportConstructObjectCallback> JSObject::js_ctor_ref_to_constructor_map__;
 

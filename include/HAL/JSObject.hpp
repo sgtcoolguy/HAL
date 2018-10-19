@@ -385,6 +385,8 @@ namespace HAL {
 		 */
 		virtual bool SetPrivate(void* data) const HAL_NOEXCEPT final;
 
+		static JsPropertyIdRef GetJsPropertyIdRef(const std::string& name) HAL_NOEXCEPT;
+
 		// JSContext (and already friended JSExportClass) use the
 		// following constructor.
 		friend class JSContext;
@@ -398,6 +400,7 @@ namespace HAL {
 		JsValueRef js_object_ref__{ nullptr };
 		static std::unordered_map<std::uintptr_t, const JsValueRef> js_private_data_to_js_object_ref_map__;
 		static std::unordered_map<std::uintptr_t, JSExportConstructObjectCallback> js_ctor_ref_to_constructor_map__;
+		static std::unordered_map<std::string, const JsPropertyIdRef> name_to_property_id_map__;
 #pragma warning(pop)
 
 	};
