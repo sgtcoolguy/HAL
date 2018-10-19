@@ -11,6 +11,7 @@
 
 #include "HAL/detail/JSBase.hpp"
 #include "HAL/JSContext.hpp"
+#include "HAL/detail/JSUtil.hpp"
 
 namespace HAL {
   class JSObject;
@@ -218,9 +219,7 @@ namespace HAL {
      @result The the execution context of this JavaScript value.
      */
     virtual JSContext get_context() const HAL_NOEXCEPT final {
-	  JsContextRef context;
-	  JsGetCurrentContext(&context);
-      return JSContext(context);
+      return JSContext(detail::GetContextRef());
     }
     
     virtual ~JSValue()           HAL_NOEXCEPT;

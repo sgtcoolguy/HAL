@@ -268,7 +268,7 @@ namespace HAL {
 			const auto parent_initialize_ctor_callback = parent_initialize_ctor_callback__;
 			const auto initialize_properties_callback = GetInitializePropertiesCallback();
 			callback = [=](JsValueRef* ctor_object_ref) {
-				JSContext js_context = JSContext(JSObject::GetContextRef());
+				JSContext js_context = JSContext(detail::GetContextRef());
 
 				// Create constructor
 				if (*ctor_object_ref == nullptr) {
@@ -380,7 +380,7 @@ namespace HAL {
 					parent_initialize_properties_callback(this_object_ptr);
 				}
 
-				const auto js_context = JSContext(JSObject::GetContextRef());
+				const auto js_context = JSContext(detail::GetContextRef());
 				auto this_object = JSObject(*this_object_ptr);
 
 				// properties

@@ -60,6 +60,7 @@ namespace HAL {
 		HAL_EXPORT std::vector<JsValueRef>  to_arguments(const std::vector<JSValue>&, JsValueRef this_object);
 		HAL_EXPORT std::vector<JSValue>  to_arguments(JsValueRef *arguments, unsigned short argumentCount);
 		HAL_EXPORT std::wstring to_wstring(const std::string& src);
+		HAL_EXPORT JsContextRef GetContextRef();
 
 	}
 } // namespace HAL { namespace detail {

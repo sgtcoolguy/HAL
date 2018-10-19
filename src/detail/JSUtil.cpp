@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <locale>
 #include <codecvt>
+#include <mutex>
 
 namespace HAL {
 	namespace detail {
@@ -19,6 +20,15 @@ namespace HAL {
 		std::wstring to_wstring(const std::string& src) {
 			std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 			return converter.from_bytes(src);
+		}
+
+		JsContextRef GetContextRef() {
+			static JsContextRef context;
+			static std::once_flag of;
+			std::call_once(of, [=]() {
+				JsGetCurrentContext(&context);
+			});
+			return context;
 		}
 
 		std::wstring GetJSObjectPropertyAsString(const JsValueRef js_object_ref, const std::string& property_name) {

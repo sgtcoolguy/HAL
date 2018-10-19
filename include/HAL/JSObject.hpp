@@ -259,13 +259,7 @@ namespace HAL {
 		 @result The the execution context of this JavaScript value.
 		 */
 		virtual JSContext get_context() const HAL_NOEXCEPT final {
-			return JSContext(GetContextRef());
-		}
-
-		static JsContextRef GetContextRef() HAL_NOEXCEPT {
-			JsContextRef context;
-			JsGetCurrentContext(&context);
-			return context;
+			return JSContext(detail::GetContextRef());
 		}
 
 		/*!
