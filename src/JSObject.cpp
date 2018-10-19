@@ -32,9 +32,13 @@ namespace HAL {
 	}
 
 	bool JSObject::HasProperty(const std::string& property_name) const HAL_NOEXCEPT {
+		// JsHasProperty may error out when there's no such property.
+		// In that case we just return false.
 		bool hasProperty;
-		ASSERT_AND_THROW_JS_ERROR(JsHasProperty(js_object_ref__, GetJsPropertyIdRef(property_name), &hasProperty));
-		return hasProperty;
+		if (JsHasProperty(js_object_ref__, GetJsPropertyIdRef(property_name), &hasProperty) == JsNoError) {
+			return hasProperty;
+		}
+		return false;
 	}
 
 	JSValue JSObject::GetProperty(const std::string& property_name) const {
