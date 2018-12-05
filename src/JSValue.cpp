@@ -29,6 +29,7 @@
 
 #include <sstream>
 #include <cassert>
+#include <mutex>
 
 namespace HAL {
   
@@ -104,6 +105,29 @@ namespace HAL {
   
   JSValue::operator bool() const HAL_NOEXCEPT {
     HAL_JSVALUE_LOCK_GUARD;
+#ifdef HAL_USE_STRING_BOOLEAN_CONVERSION
+    // Use Java-like string to boolean conversion.
+    // This converts "false" string to false & "true" string to true unlike JavaScript standard.
+    static JSStringRef js_string_true_ref;
+    static JSStringRef js_string_false_ref;
+    static std::once_flag of;
+    std::call_once(of, [=] {   
+      js_string_true_ref  = JSStringCreateWithUTF8CString("true");
+      js_string_false_ref = JSStringCreateWithUTF8CString("false");
+    });
+    if (IsString()) {
+      const auto js_string_ref = JSValueToStringCopy(static_cast<JSContextRef>(js_context__), js_value_ref__, nullptr);
+      if (JSStringIsEqual(js_string_ref, js_string_true_ref)) {
+        JSStringRelease(js_string_ref);
+        return true;
+      }
+      if (JSStringIsEqual(js_string_ref, js_string_false_ref)) {
+        JSStringRelease(js_string_ref);
+        return false;
+      }
+      JSStringRelease(js_string_ref);
+    }
+#endif
     return JSValueToBoolean(static_cast<JSContextRef>(js_context__), js_value_ref__);
   }
   

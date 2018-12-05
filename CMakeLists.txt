@@ -15,6 +15,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 option(HAL_DISABLE_TESTS "Disable compiling the tests" OFF)
 option(HAL_DEFINE_JSCLASSDEFINITIONEMPTY "Define HAL_DEFINE_JSCLASSDEFINITIONEMPTY" ON)
 option(HAL_RENAME_AXWAYHAL "Rename DLL to AXWAYHAL" OFF)
+option(HAL_USE_STRING_BOOLEAN_CONVERSION "Use Java-like string-boolean conversion" ON)
 
 # Define helper functions and macros.
 include(${PROJECT_SOURCE_DIR}/cmake/internal_utils.cmake)
@@ -276,6 +277,10 @@ endif()
 
 if (HAL_RENAME_AXWAYHAL)
   set_target_properties(HAL PROPERTIES OUTPUT_NAME "AXWAYHAL")
+endif()
+
+if (HAL_USE_STRING_BOOLEAN_CONVERSION)
+  add_definitions("-DHAL_USE_STRING_BOOLEAN_CONVERSION") 
 endif()
 
 # Support find_package(HAL 0.5 REQUIRED)
