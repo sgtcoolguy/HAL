@@ -316,7 +316,7 @@ namespace HAL { namespace detail {
      @method
      
      @abstract Add a function property to your JavaScript object with
-     the 'DontDelete' and 'ReadOnly' attributes. By default the
+     the 'None' attribute. By default the
      property is enumerable unless you specify otherwise.
      
      @discussion For example, given this class definition:
@@ -345,7 +345,7 @@ namespace HAL { namespace detail {
      @result A reference to the builder for chaining.
      */
     JSExportClassDefinitionBuilder<T>& AddFunctionProperty(const JSString& function_name, CallNamedFunctionCallback<T> function_callback, bool enumerable = true) {
-      std::unordered_set<JSPropertyAttribute> attributes { JSPropertyAttribute::DontDelete, JSPropertyAttribute::ReadOnly };
+      std::unordered_set<JSPropertyAttribute> attributes { JSPropertyAttribute::None };
       static_cast<void>(!enumerable && attributes.insert(JSPropertyAttribute::DontEnum).second);
       HAL_DETAIL_JSEXPORTCLASSDEFINITIONBUILDER_LOCK_GUARD;
       AddFunctionPropertyCallback(JSExportNamedFunctionPropertyCallback<T>(function_name, function_callback, attributes));
