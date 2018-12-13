@@ -1,7 +1,7 @@
 #!groovy
 
-def cmakeAndMSBuild(buildDir, buildType, platform, sdkVersion, args) {
-	def generator = 'Visual Studio 12 2013'
+// TODO generate build dir based on combo of sdkVersion/phoneOrStore/platform
+def cmakeAndMSBuild(generator, msBuildName, phoneOrStore, buildDir, buildType, platform, sdkVersion, args) {
 	def msBuildArgs = ''
 	if (platform.equals('ARM')) {
 		generator += ' ARM'
@@ -15,26 +15,28 @@ def cmakeAndMSBuild(buildDir, buildType, platform, sdkVersion, args) {
 	}
 	bat "mkdir build\\${buildDir}"
 
-	def msBuild12 = tool(name: 'MSBuild 12.0', type: 'hudson.plugins.msbuild.MsBuildInstallation')
+	def msBuild = tool(name: msBuildName, type: 'hudson.plugins.msbuild.MsBuildInstallation')
 	def raw = bat(returnStdout: true, script: "echo %JavaScriptCore_${sdkVersion}_HOME%").trim()
 	def jscHome = raw.split('\n')[-1]
 	echo "Setting JavaScriptCore_HOME to ${jscHome}"
 	withEnv(["JavaScriptCore_HOME=${jscHome}"]) {
 		// Run CMake
 		dir("build/${buildDir}") {
-			bat "cmake -G \"${generator}\" -D CMAKE_BUILD_TYPE=${buildType} ${args} ${env.WORKSPACE}"
+			bat "cmake -G \"${generator}\" -DCMAKE_SYSTEM_NAME=Windows${phoneOrStore} -DCMAKE_SYSTEM_VERSION=${sdkVersion} ${args} ${env.WORKSPACE}"
 		}
 
 		// Then MSBuild
-		bat "\"${msBuild12}\" /p:Configuration=${buildType} build/${buildDir}/HAL.sln ${msBuildArgs}"
+		bat "\"${msBuild}\" /p:Configuration=${buildType} build/${buildDir}/HAL.sln ${msBuildArgs}"
 	}
 	// scan for warninsg from MSBuild
 	warnings consoleParsers: [[parserName: 'MSBuild']]
 }
 
-def test() {
+// '-DCMAKE_SYSTEM_NAME=WindowsPhone' or '-DCMAKE_SYSTEM_NAME=WindowsStore'
+
+def test(dirname) {
 	// Run CTest
-	dir('build/testing') {
+	dir("build/${dirname}") {
 		bat '(robocopy Debug examples\\Debug HAL.dll) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
 		bat '(robocopy Debug test\\Debug HAL.dll) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
 		bat 'ctest.exe --no-compress-output -T Test || verify > NUL'
@@ -47,7 +49,7 @@ def test() {
 			[$class: 'SkippedThreshold', failureNewThreshold: '0', failureThreshold: '0', unstableNewThreshold: '0', unstableThreshold: '0']
 		],
 		tools: [
-			[$class: 'CTestType', deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/testing/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true]
+			[$class: 'CTestType', deleteOutputFiles: true, failIfNotNew: true, pattern: "build/${dirname}/Testing/**/Test.xml", skipNoTestFiles: false, stopProcessingIfError: true]
 		]
 	])
 }
@@ -60,7 +62,7 @@ timestamps {
 				node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
 					try {
 						checkout scm
-						cmakeAndMSBuild('x86', 'Release', 'x86', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
+						cmakeAndMSBuild('Visual Studio 12 2013', 'MSBuild 12.0', 'Phone', 'x86', 'Release', 'x86', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
 						stash includes: 'build/x86/Release/HAL.*', name: '8.1-x86'
 						stash includes: 'build/x86/hal_export.h', name: 'export-header'
 						stash includes: 'include/**/*.hpp', name: 'headers'
@@ -73,27 +75,36 @@ timestamps {
 				node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
 					try {
 						checkout scm
-						cmakeAndMSBuild('ARM', 'Release', 'ARM', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
+						cmakeAndMSBuild('Visual Studio 12 2013', 'MSBuild 12.0', 'Phone', 'ARM', 'Release', 'ARM', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
 						stash includes: 'build/ARM/Release/HAL.*', name: '8.1-ARM'
 					} finally {
 						deleteDir()
 					}
 				}
+			},
+			'Win 10 Phone x86': {
+				node('msbuild-14 && vs2015 && jsc && cmake && gtest && boost && windows-sdk-10') {
+					try {
+						checkout scm
+						cmakeAndMSBuild('Visual Studio 14 2015', 'MSBuild 14.0', 'Phone', 'x86', 'Release', 'x86', '10.0', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
+						stash includes: 'build/x86/Release/HAL.*', name: '10.0-x86'
+					} finally {
+						deleteDir()
+					}
+				}
+			},
+			'Win 10 Phone ARM': {
+				node('msbuild-14 && vs2015 && jsc && cmake && gtest && boost && windows-sdk-10') {
+					try {
+						checkout scm
+						cmakeAndMSBuild('Visual Studio 14 2015', 'MSBuild 14.0', 'Phone', 'ARM', 'Release', 'ARM', '10.0', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
+						stash includes: 'build/ARM/Release/HAL.*', name: '10.0-ARM'
+					} finally {
+						deleteDir()
+					}
+				}
 			}
-			// TODO: Windows 10
-			// 'Win 10 Phone x86': {
-			// 	node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
-			// 		checkout scm
-			// 		cmakeAndMSBuild('ARM', 'Release', 'ARM', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
-			// 	}
-			// },
-			// 'Windows 10 Desktop': {
-			// 	node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
-			// 		checkout scm
-			// 		cmakeAndMSBuild('ARM', 'Release', 'ARM', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
-			// 		// stash results!
-			// }
-			// }
+			// TODO: Win 10 Store!
 		)
 	} // stage('Build')
 
@@ -103,26 +114,25 @@ timestamps {
 				node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
 					try {
 						checkout scm
-						cmakeAndMSBuild('testing', 'Debug', 'x86', '8.1', '-DHAL_DISABLE_TESTS=OFF -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
-						test()
+						def testDir = 'test-8.1-phone-x86'
+						cmakeAndMSBuild('Visual Studio 12 2013', 'MSBuild 12.0', 'Phone', testDir, 'Debug', 'x86', '8.1', '-DHAL_DISABLE_TESTS=OFF -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
+						test(testDir)
 					} finally {
 						deleteDir()
 					}
 				}
-			// TODO: Windows 10
-			// 'Windows 10 Phone': {
-			// 	node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
-			// 		checkout scm
-			// 		cmakeAndMSBuild('testing', 'Debug', 'x86', '8.1', '-DHAL_DISABLE_TESTS=OFF -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
-			// 		test()
-			// 	}
-			// },
-			// 'Windows 10 Desktop': {
-			// 	node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
-			// 		checkout scm
-			// 		cmakeAndMSBuild('testing', 'Debug', 'x86', '8.1', '-DHAL_DISABLE_TESTS=OFF -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
-			// 		test()
-			// 	}
+			},
+			'Win 10 Phone x86': {
+				node('msbuild-14 && vs2015 && jsc && cmake && gtest && boost && windows-sdk-10') {
+					try {
+						checkout scm
+						def testDir = 'test-10-phone-x86'
+						cmakeAndMSBuild('Visual Studio 14 2015', 'MSBuild 14.0', 'Phone', testDir, 'Debug', 'x86', '10.0', '-DHAL_DISABLE_TESTS=OFF -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
+						test(testDir)
+					} finally {
+						deleteDir()
+					}
+				}
 			}
 		)
 	} // stage('Test')
@@ -140,6 +150,7 @@ timestamps {
 				unstash 'export-header'
 				unstash '8.1-ARM'
 				unstash '8.1-x86'
+				// TODO Unstash 10!
 				bat 'mkdir dist\\HAL'
 				bat '(robocopy build\\x86\\Release dist\\HAL\\x86 HAL.*) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
 				bat '(robocopy build\\ARM\\Release dist\\HAL\\ARM HAL.*) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
