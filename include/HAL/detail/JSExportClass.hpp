@@ -25,7 +25,6 @@
 #include "HAL/detail/JSValueUtil.hpp"
 
 #include <string>
-#include <regex>
 #include <cstdint>
 #include <vector>
 #include <memory>
@@ -403,32 +402,10 @@ namespace HAL { namespace detail {
   
   template<typename T>
   JSValueRef JSExportClass<T>::CallNamedFunctionCallback(JSContextRef context_ref, JSObjectRef function_ref, JSObjectRef this_object_ref, size_t argument_count, const JSValueRef arguments_array[], JSValueRef* exception) try {
-    // to_string(js_object) produces this text:
-    //
-    // function sayHello() {
-    //     [native code]
-    // }
-    //
-    // So this is the regular expression we use to determing the
-    // function's name for lookup.
-    static std::regex regex("^function\\s+([^(]+)\\(\\)(.|\\n)*$");
     
     JSObject          js_object(JSObject::FindJSObject(context_ref, function_ref));
     JSObject          this_object(JSObject::FindJSObject(context_ref, this_object_ref));
-    const std::string js_object_string = to_string(js_object);
-    std::smatch       match_results;
-    const bool        found = std::regex_match(js_object_string, match_results, regex);
-
-    static_cast<void>(found);
-    HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::CallNamedFunction: function name found = ", found, ", match_results.size() = ", match_results.size(), ", input = ", js_object_string);
-    
-    // precondition
-    // The size of the match results should be 3:
-    // match_results[0] == the whole string.
-    // match_results[1] == The function's name
-    // match_results[2] == Everything after the function's name.
-    assert(match_results.size() == 3);
-    const std::string function_name = match_results[1];
+    const std::string function_name = static_cast<std::string>(JSObject(JSContext(context_ref), function_ref).GetProperty("name"));
     
     const auto native_name = GetJSExportComponentName(function_name);
     JSError::NativeStack__.push_back(native_name);
