@@ -358,7 +358,6 @@ namespace HAL {
     if (found) {
       auto tuple = position -> second;
       JSContextRef js_context_ref = reinterpret_cast<JSContextRef>(std::get<0>(tuple));
-      static_cast<void>(js_context_ref); // just meant to suppress "unused" compiler warning
       --std::get<1>(tuple);
       if (std::get<1>(tuple) == 0) {
         JSValueUnprotect(static_cast<JSContextRef>(js_context_ref), js_object_ref);
@@ -373,18 +372,6 @@ namespace HAL {
   }
 
   JSObject JSObject::FindJSObject(JSContextRef js_context_ref, JSObjectRef js_object_ref) {
-    HAL_JSOBJECT_LOCK_GUARD_STATIC;
-    const auto key      = reinterpret_cast<std::intptr_t>(js_object_ref);
-    const auto position = js_object_ref_to_js_context_ref_map__.find(key);
-    const bool found    = position != js_object_ref_to_js_context_ref_map__.end();
-    
-    // precondition
-    if (found) {
-      js_context_ref = reinterpret_cast<JSContextRef>(std::get<0>(position -> second));
-    }
-    
-    HAL_LOG_TRACE("JSObject::FindJSObject: found = ", found, " for JSObjectRef ", js_object_ref, ", JSContextRef = ", js_context_ref);
-    
     return JSObject(JSContext(js_context_ref), js_object_ref);
   }
 

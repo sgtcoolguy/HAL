@@ -405,7 +405,7 @@ namespace HAL { namespace detail {
     
     JSObject          js_object(JSObject::FindJSObject(context_ref, function_ref));
     JSObject          this_object(JSObject::FindJSObject(context_ref, this_object_ref));
-    const std::string function_name = static_cast<std::string>(JSObject(JSContext(context_ref), function_ref).GetProperty("name"));
+    const std::string function_name = static_cast<std::string>(js_object.GetProperty("name"));
     
     const auto native_name = GetJSExportComponentName(function_name);
     JSError::NativeStack__.push_back(native_name);
@@ -419,10 +419,8 @@ namespace HAL { namespace detail {
     
     const auto callback_position = js_export_class_definition__.named_function_property_callback_map__.find(function_name);
     const bool callback_found    = callback_position != js_export_class_definition__.named_function_property_callback_map__.end();
-    const auto native_object_ptr = static_cast<T*>(js_object.GetPrivate());
     const auto native_this_ptr   = static_cast<T*>(this_object.GetPrivate());
 
-    static_cast<void>(native_object_ptr);
     HAL_LOG_DEBUG("JSExportClass<", typeid(T).name(), ">::CallNamedFunction: callback found = ", callback_found, " for this[", native_this_ptr, "].", function_name, "(...)");
     
     // precondition
