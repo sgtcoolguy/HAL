@@ -83,7 +83,7 @@ namespace HAL {
      @result The context group of this JavaScript execution context.
      */
     JSContextGroup get_context_group() const HAL_NOEXCEPT {
-      return js_context_group__;
+      return JSContextGroup(js_context_group_ref__);
     }
     
     /*!
@@ -474,8 +474,12 @@ namespace HAL {
     // need to be exported from a DLL.
 #pragma warning(push)
 #pragma warning(disable: 4251)
-    JSContextGroup     js_context_group__;
+    JSContextGroupRef  js_context_group_ref__ { nullptr };
     JSGlobalContextRef js_global_context_ref__ { nullptr };
+#ifdef HAL_USE_SINGLE_CONTEXT
+    static JSContextGroupRef  js_single_context_group_ref__;
+    static JSGlobalContextRef js_single_context_ref__;
+#endif
 #pragma warning(pop)
     
 #undef  HAL_JSCONTEXT_LOCK_GUARD
