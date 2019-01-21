@@ -266,7 +266,7 @@ namespace HAL {
   }
   
   JSContext::JSContext(const JSContext& rhs) HAL_NOEXCEPT
-  : js_context_group_ref__(rhs.js_context_group_ref__)
+  : js_context_group__(rhs.js_context_group__)
   , js_global_context_ref__(rhs.js_global_context_ref__) {
     HAL_LOG_TRACE("JSContext:: copy ctor ", this);
 #ifndef HAL_USE_SINGLE_CONTEXT
@@ -276,7 +276,7 @@ namespace HAL {
   }
   
   JSContext::JSContext(JSContext&& rhs) HAL_NOEXCEPT
-  : js_context_group_ref__(std::move(rhs.js_context_group_ref__))
+  : js_context_group__(std::move(rhs.js_context_group__))
   , js_global_context_ref__(rhs.js_global_context_ref__) {
     HAL_LOG_TRACE("JSContext:: move ctor ", this);
 #ifndef HAL_USE_SINGLE_CONTEXT
@@ -299,43 +299,24 @@ namespace HAL {
     
     // By swapping the members of two classes, the two classes are
     // effectively swapped.
-    swap(js_context_group_ref__     , other.js_context_group_ref__);
+    swap(js_context_group__     , other.js_context_group__);
     swap(js_global_context_ref__, other.js_global_context_ref__);
   }
   
-#ifdef HAL_USE_SINGLE_CONTEXT
-  JSGlobalContextRef JSContext::js_single_context_ref__{ nullptr };
-  JSContextGroupRef  JSContext::js_single_context_group_ref__{ nullptr };
-#endif
-
   JSContext::JSContext(const JSContextGroup& js_context_group, const JSClass& global_object_class) HAL_NOEXCEPT
-  : js_context_group_ref__(static_cast<JSContextGroupRef>(js_context_group))
+  : js_context_group__(js_context_group)
   , js_global_context_ref__(JSGlobalContextCreateInGroup(static_cast<JSContextGroupRef>(js_context_group), static_cast<JSClassRef>(global_object_class))) {
     HAL_LOG_TRACE("JSContext:: ctor 1 ", this);
     HAL_LOG_TRACE("JSContext:: retain ", js_global_context_ref__, " (implicit) for ", this);
   }
   
-  JSContext::JSContext(JSContextRef js_context_ref) HAL_NOEXCEPT {
-#ifdef HAL_USE_SINGLE_CONTEXT
-    if (js_single_context_ref__) {
-        js_context_group_ref__  = js_single_context_group_ref__;
-        js_global_context_ref__ = js_single_context_ref__;
-    } else {
-        js_global_context_ref__ = JSContextGetGlobalContext(js_context_ref);
-        js_context_group_ref__  = JSContextGetGroup(js_global_context_ref__);
-
-        js_single_context_group_ref__ = js_context_group_ref__;
-        js_single_context_ref__ = js_global_context_ref__;
-    }
-#else
-    js_global_context_ref__ = JSContextGetGlobalContext(js_context_ref);
-    js_context_group_ref__  = JSContextGetGroup(js_global_context_ref__);
-#endif
+  JSContext::JSContext(JSContextRef js_context_ref) HAL_NOEXCEPT
+  : JSContext(JSContextGetGlobalContext(js_context_ref)) {
   }
   
   // For interoperability with the JavaScriptCore C API.
   JSContext::JSContext(JSGlobalContextRef js_global_context_ref) HAL_NOEXCEPT
-  : js_context_group_ref__(JSContextGetGroup(js_global_context_ref))
+  : js_context_group__(JSContextGetGroup(js_global_context_ref))
   , js_global_context_ref__(js_global_context_ref) {
     HAL_LOG_TRACE("JSContext:: ctor 2 ", this);
     assert(js_global_context_ref__);
