@@ -1,0 +1,11 @@
+#pragma once
+
+#include <string>
+#include <locale>
+#include <codecvt>
+#include <cstddef>
+#include <vector>
+#include <utility>
+#include <mutex>
+
+#include "HAL/detail/JSBase.hpp"

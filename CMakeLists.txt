@@ -18,7 +18,8 @@ option(HAL_RENAME_AXWAYHAL "Rename DLL to AXWAYHAL" OFF)
 option(HAL_USE_STRING_BOOLEAN_CONVERSION "Use Java-like string-boolean conversion" ON)
 
 # Define helper functions and macros.
-include(${PROJECT_SOURCE_DIR}/cmake/internal_utils.cmake)
+list(INSERT CMAKE_MODULE_PATH 0 ${PROJECT_SOURCE_DIR}/cmake)
+include(internal_utils)
 
 # Target architecture, only available for iOS
 set(ARCH "i386" CACHE STRING "Target Architecture")
@@ -42,15 +43,14 @@ endif()
 # Allow "make test" to work.
 enable_testing()
 
-# We have a custom finder for HAL.
-list(INSERT CMAKE_MODULE_PATH 0 ${PROJECT_SOURCE_DIR}/cmake)
+# We have a custom finder for JavaScriptCore
 find_package(JavaScriptCore REQUIRED)
 
 set(SOURCE_HAL
   include/HAL/HAL.hpp
   include/HAL/JSString.hpp
   src/JSString.cpp
-  )
+)
 
 set(SOURCE_HAL_detail
   include/HAL/detail/JSBase.hpp
@@ -60,13 +60,13 @@ set(SOURCE_HAL_detail
   include/HAL/detail/HashUtilities.hpp
   include/HAL/detail/JSPerformanceCounter.hpp
   include/HAL/detail/JSPerformanceCounterPrinter.hpp
-  )
+)
 
 set(SOURCE_JSExport
   include/HAL/JSExport.hpp
   include/HAL/JSExportObject.hpp
   src/JSExportObject.cpp
-  )
+)
 
 set(SOURCE_JSExport_detail
   include/HAL/detail/JSExportClassDefinition.hpp
@@ -77,7 +77,7 @@ set(SOURCE_JSExport_detail
   include/HAL/detail/JSExportNamedValuePropertyCallback.hpp
   include/HAL/detail/JSValueUtil.hpp
   src/detail/JSValueUtil.cpp
-  )
+)
   
 set(SOURCE_JSClass
   include/HAL/JSClassDefinition.hpp
@@ -85,7 +85,7 @@ set(SOURCE_JSClass
   include/HAL/JSClassAttribute.hpp
   include/HAL/JSClass.hpp
   src/JSClass.cpp
-  )
+)
   
 set(SOURCE_JSClass_detail
   include/HAL/detail/JSPropertyCallback.hpp
@@ -94,14 +94,14 @@ set(SOURCE_JSClass_detail
   src/detail/JSStaticValue.cpp
   include/HAL/detail/JSStaticFunction.hpp
   src/detail/JSStaticFunction.cpp
-  )
+)
 
 set(SOURCE_JSContext
   include/HAL/JSContextGroup.hpp
   src/JSContextGroup.cpp
   include/HAL/JSContext.hpp
   src/JSContext.cpp
-  )
+)
 
 set(SOURCE_JSValue
   include/HAL/JSValue.hpp
@@ -110,7 +110,7 @@ set(SOURCE_JSValue
   include/HAL/JSNull.hpp
   include/HAL/JSBoolean.hpp
   include/HAL/JSNumber.hpp
-  )
+)
 
 set(SOURCE_JSObject
   include/HAL/JSPropertyAttribute.hpp
@@ -128,11 +128,11 @@ set(SOURCE_JSObject
   src/JSRegExp.cpp
   include/HAL/JSFunction.hpp
   src/JSFunction.cpp
-  )
+)
   
 set(SOURCE_JSObject_detail
   include/HAL/detail/JSPropertyNameAccumulator.hpp
-  )
+)
 
 set(SOURCE_JSLogger_detail
   include/HAL/detail/JSLogger.hpp
@@ -141,7 +141,7 @@ set(SOURCE_JSLogger_detail
   include/HAL/detail/JSLoggerPolicyFile.hpp
   include/HAL/detail/JSLoggerPimpl.hpp
   src/detail/JSLoggerPimpl.cpp
-  )
+)
 
 source_group(HAL                   FILES ${SOURCE_HAL})
 source_group(HAL\\detail           FILES ${SOURCE_HAL_detail})
@@ -158,7 +158,9 @@ source_group(HAL\\JSLogger\\detail FILES ${SOURCE_JSLogger_detail})
 #set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 #set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
-add_library(HAL ${LIBRARY_BUILD_TYPE}
+# Turn on precompiled headers
+include(precompiled_header)
+set(SOURCE_ALL
   ${SOURCE_HAL}
   ${SOURCE_HAL_detail}
   ${SOURCE_JSExport}
@@ -170,7 +172,12 @@ add_library(HAL ${LIBRARY_BUILD_TYPE}
   ${SOURCE_JSObject}
   ${SOURCE_JSObject_detail}
   ${SOURCE_JSLogger_detail}
-  )
+)
+enable_precompiled_headers(include/stdafx.h SOURCE_ALL)
+
+add_library(HAL ${LIBRARY_BUILD_TYPE}
+  ${SOURCE_ALL}
+)
 
 include(GenerateExportHeader)
 generate_export_header(HAL)
@@ -181,11 +188,11 @@ target_compile_definitions(HAL PRIVATE STATICALLY_LINKED_WITH_JavaScriptCore)
 target_include_directories(HAL PUBLIC
   ${PROJECT_SOURCE_DIR}/include
   ${JavaScriptCore_INCLUDE_DIRS}
-  )
+)
 
 target_link_libraries(HAL
   ${JavaScriptCore_LIBRARIES}
-  )
+)
 
 if (WIN32)
   # Silence this warning when lnking with the JavaScriptCore static
@@ -290,14 +297,14 @@ set_property(TARGET HAL PROPERTY SOVERSION 0)
 set_property(TARGET HAL PROPERTY INTERFACE_HAL_MAJOR_VERSION 0)
 set_property(TARGET HAL APPEND PROPERTY
   COMPATIBLE_INTERFACE_STRING HAL_MAJOR_VERSION
-  )
+)
 
 install(TARGETS HAL EXPORT HALTargets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
-  )
+)
 
 export(EXPORT HALTargets
   FILE "${CMAKE_BINARY_DIR}/HALTargets.cmake"
@@ -306,14 +313,14 @@ export(EXPORT HALTargets
 configure_file(cmake/HALConfig.cmake
   "${CMAKE_BINARY_DIR}/HALConfig.cmake"
   COPYONLY
-  )
+)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
   "${CMAKE_BINARY_DIR}/HALConfigVersion.cmake"
   VERSION ${HAL_VERSION}
   COMPATIBILITY AnyNewerVersion
-  )
+)
 
 # Store the current build directory in the CMake user package registry
 # so that find_package(HAL) works.
@@ -325,7 +332,7 @@ export(PACKAGE HAL)
 set(ConfigPackageLocation lib/cmake/HAL)
 install(EXPORT HALTargets
   DESTINATION ${ConfigPackageLocation}
-  )
+)
 
 install(
   FILES
@@ -333,5 +340,5 @@ install(
   "${CMAKE_CURRENT_BINARY_DIR}/HALConfigVersion.cmake"
   DESTINATION ${ConfigPackageLocation}
   COMPONENT Devel
-  )
-]]
+)
+#]]
