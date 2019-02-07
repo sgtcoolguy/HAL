@@ -1,11 +1,8 @@
 #!groovy
 
 def cmakeAndMSBuild(buildDir, buildType, platform, sdkVersion, args) {
-	def generator = 'Visual Studio 12 2013'
-	def msBuildArgs = ''
-	if (platform.equals('ARM')) {
-		generator += ' ARM'
-		msBuildArgs = '/p:Platform=ARM'
+	if ("ARM".equals(platform)) { // if we specify this with x86, it blows up
+		args = "-A ${platform} ${args}"
 	}
 	// Clean the build directory
 	if (fileExists("build/${buildDir}")) {
@@ -15,21 +12,14 @@ def cmakeAndMSBuild(buildDir, buildType, platform, sdkVersion, args) {
 	}
 	bat "mkdir build\\${buildDir}"
 
-	def msBuild12 = tool(name: 'MSBuild 12.0', type: 'hudson.plugins.msbuild.MsBuildInstallation')
 	def raw = bat(returnStdout: true, script: "echo %JavaScriptCore_${sdkVersion}_HOME%").trim()
 	def jscHome = raw.split('\n')[-1]
 	echo "Setting JavaScriptCore_HOME to ${jscHome}"
 	withEnv(["JavaScriptCore_HOME=${jscHome}"]) {
-		// Run CMake
-		dir("build/${buildDir}") {
-			bat "cmake -G \"${generator}\" -D CMAKE_BUILD_TYPE=${buildType} ${args} ${env.WORKSPACE}"
-		}
-
-		// Then MSBuild
-		bat "\"${msBuild12}\" /p:Configuration=${buildType} build/${buildDir}/HAL.sln ${msBuildArgs}"
+	    cmakeBuild buildDir: "build/${buildDir}", generator: 'Visual Studio 12 2013', cmakeArgs: args, installation: 'cmake 3.13.4', steps: [[args: "--config ${buildType}", withCmake: true]]
 	}
-	// scan for warninsg from MSBuild
-	warnings consoleParsers: [[parserName: 'MSBuild']]
+	// scan for warnings from MSBuild
+	recordIssues aggregatingResults: true, tools: [msBuild()], id: "${buildDir}-${buildType}"
 }
 
 def test() {
@@ -37,19 +27,9 @@ def test() {
 	dir('build/testing') {
 		bat '(robocopy Debug examples\\Debug HAL.dll) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
 		bat '(robocopy Debug test\\Debug HAL.dll) ^& IF %ERRORLEVEL% LEQ 3 exit /B 0'
-		bat 'ctest.exe --no-compress-output -T Test || verify > NUL'
+		ctest arguments: '--no-compress-output -T Test', installation: 'cmake 3.13.4'
 	}
-	step([$class: 'XUnitPublisher',
-		testTimeMargin: '3000',
-		thresholdMode: 1,
-		thresholds: [
-			[$class: 'FailedThreshold', failureNewThreshold: '0', failureThreshold: '0', unstableNewThreshold: '0', unstableThreshold: '0'],
-			[$class: 'SkippedThreshold', failureNewThreshold: '0', failureThreshold: '0', unstableNewThreshold: '0', unstableThreshold: '0']
-		],
-		tools: [
-			[$class: 'CTestType', deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/testing/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true]
-		]
-	])
+	xunit thresholds: [failed(failureThreshold: '0'), skipped(failureThreshold: '0')], tools: [CTest(deleteOutputFiles: true, failIfNotNew: true, pattern: 'build/testing/Testing/**/Test.xml', skipNoTestFiles: false, stopProcessingIfError: true)]
 }
 
 // Wrap in timestamper
@@ -57,7 +37,7 @@ timestamps {
 	stage('Build') {
 		parallel(
 			'Win 8.1 Phone x86': {
-				node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
+				node('msbuild-12 && jsc && gtest && boost && windows-sdk-8.1') {
 					try {
 						checkout scm
 						cmakeAndMSBuild('x86', 'Release', 'x86', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
@@ -70,7 +50,7 @@ timestamps {
 				}
 			},
 			'Win 8.1 Phone ARM': {
-				node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
+				node('msbuild-12 && jsc && gtest && boost && windows-sdk-8.1') {
 					try {
 						checkout scm
 						cmakeAndMSBuild('ARM', 'Release', 'ARM', '8.1', '-DHAL_DISABLE_TESTS=ON -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
@@ -98,8 +78,8 @@ timestamps {
 	} // stage('Build')
 
 	stage('Test') {
-		parallel(
-			'Win 8.1 Phone x86': {
+		// parallel(
+			// 'Win 8.1 Phone x86': {
 				node('msbuild-12 && jsc && cmake && gtest && boost && windows-sdk-8.1') {
 					try {
 						checkout scm
@@ -123,8 +103,8 @@ timestamps {
 			// 		cmakeAndMSBuild('testing', 'Debug', 'x86', '8.1', '-DHAL_DISABLE_TESTS=OFF -DHAL_DEFINE_JSCLASSDEFINITIONEMPTY=OFF')
 			// 		test()
 			// 	}
-			}
-		)
+			// }
+		// )
 	} // stage('Test')
 
 	stage('Results') {

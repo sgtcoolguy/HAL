@@ -13,9 +13,13 @@
 #  JavaScriptCore_INCLUDE_DIRS - the include directory
 #  JavaScriptCore_LIBRARY_DIR - the directory containing the library
 #  JavaScriptCore_LIBRARIES   - link these to use JavaScriptCore
+#
+# and the following imported targets
+#
+#     JavaScriptCore::JavaScriptCore
+#
 
 find_package(PkgConfig)
-
 pkg_check_modules(PC_JavaScriptCore QUIET JavaScriptCore)
 
 find_path(JavaScriptCore_INCLUDE_DIRS
@@ -23,12 +27,12 @@ find_path(JavaScriptCore_INCLUDE_DIRS
   HINTS ${PC_JavaScriptCore_INCLUDE_DIRS} ${PC_JavaScriptCore_INCLUDEDIR}
   PATHS ENV JavaScriptCore_HOME
   PATH_SUFFIXES includes
-  )
+)
 
 set(JavaScriptCore_ARCH "x86")
-if(CMAKE_GENERATOR MATCHES "^Visual Studio .+ ARM$")
+if (CMAKE_GENERATOR MATCHES "^Visual Studio .+ ARM$" OR CMAKE_VS_PLATFORM_NAME STREQUAL "ARM")
   set(JavaScriptCore_ARCH "arm")
-elseif(CMAKE_GENERATOR MATCHES "^Visual Studio .+ Win64$")
+elseif(CMAKE_GENERATOR MATCHES "^Visual Studio .+ Win64$" OR CMAKE_VS_PLATFORM_NAME STREQUAL "x64")
   set(JavaScriptCore_ARCH "x64")
 endif()
 
@@ -37,13 +41,13 @@ find_library(JavaScriptCore_LIBRARIES
   HINTS ${PC_JavaScriptCore_LIBRARY_DIRS} ${PC_JavaScriptCore_LIBDIR}
   PATHS ENV JavaScriptCore_HOME
   PATH_SUFFIXES ${JavaScriptCore_ARCH}
-  )
+)
 
 if(NOT JavaScriptCore_LIBRARIES MATCHES ".+-NOTFOUND")
   get_filename_component(JavaScriptCore_LIBRARY_DIR ${JavaScriptCore_LIBRARIES} DIRECTORY)
 
   # If we found the JavaScriptCore library and we're using a Visual
-  # Studio generator, then set Visual Studio to use version os JSC lib matching current Configuration of the build.
+  # Studio generator, then set Visual Studio to use version of JSC lib matching current Configuration of the build.
   if(CMAKE_GENERATOR MATCHES "^Visual Studio .+")
     string(REGEX REPLACE "-(Debug|Release)" "-$(Configuration)" JavaScriptCore_LIBRARIES ${JavaScriptCore_LIBRARIES})
   endif()
@@ -53,8 +57,12 @@ endif()
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(JavaScriptCore DEFAULT_MSG JavaScriptCore_INCLUDE_DIRS JavaScriptCore_LIBRARIES)
 
-# message(STATUS "MDL: CMAKE_CONFIGURATION_TYPES   = ${CMAKE_CONFIGURATION_TYPES}")
-# message(STATUS "MDL: JAVASCRIPTCORE_FOUND        = ${JAVASCRIPTCORE_FOUND}")
-# message(STATUS "MDL: JavaScriptCore_INCLUDE_DIRS = ${JavaScriptCore_INCLUDE_DIRS}")
-# message(STATUS "MDL: JavaScriptCore_LIBRARY_DIR  = ${JavaScriptCore_LIBRARY_DIR}")
-# message(STATUS "MDL: JavaScriptCore_LIBRARIES    = ${JavaScriptCore_LIBRARIES}")
+# set up the target we can re-use
+if(JAVASCRIPTCORE_FOUND AND NOT TARGET JavaScriptCore::JavaScriptCore)
+    add_library(JavaScriptCore::JavaScriptCore STATIC IMPORTED)
+    set_target_properties(JavaScriptCore::JavaScriptCore PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${JavaScriptCore_INCLUDE_DIRS}"
+        IMPORTED_LOCATION_DEBUG "${JavaScriptCore_LIBRARY_DIR}/JavaScriptCore-Debug.lib"
+        IMPORTED_LOCATION_RELEASE "${JavaScriptCore_LIBRARY_DIR}/JavaScriptCore-Release.lib"
+    )
+endif()

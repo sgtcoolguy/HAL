@@ -1,0 +1,19 @@
+# HAL
+#
+# Copyright (c) 2014 by Appcelerator, Inc. All Rights Reserved.
+# Licensed under the terms of the Apache Public License.
+# Please see the LICENSE included with this distribution for details.
+get_filename_component(HAL_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(CMakeFindDependencyMacro)
+
+list(APPEND CMAKE_MODULE_PATH ${HAL_CMAKE_DIR})
+
+find_package(Boost 1.55 REQUIRED COMPONENTS regex)
+find_package(JavaScriptCore REQUIRED MODULE)
+list(REMOVE_AT CMAKE_MODULE_PATH -1)
+
+if(NOT TARGET HAL::HAL)
+    include("${HAL_CMAKE_DIR}/HALTargets.cmake")
+endif()
+
+set(HAL_LIBRARIES HAL::HAL)

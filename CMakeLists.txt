@@ -3,19 +3,21 @@
 # Copyright (c) 2014 by Appcelerator, Inc. All Rights Reserved.
 # Licensed under the terms of the Apache Public License.
 # Please see the LICENSE included with this distribution for details.
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.13)
 
-project(HAL)
+# See https://github.com/pabloariasal/modern-cmake-sample
+# for guidance
 
-set(HAL_VERSION 0.5.0)
-
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
+project(HAL VERSION 0.5.0 LANGUAGES CXX C)
 
 option(HAL_DISABLE_TESTS "Disable compiling the tests" OFF)
 option(HAL_DEFINE_JSCLASSDEFINITIONEMPTY "Define HAL_DEFINE_JSCLASSDEFINITIONEMPTY" ON)
 option(HAL_RENAME_AXWAYHAL "Rename DLL to AXWAYHAL" OFF)
 option(HAL_USE_STRING_BOOLEAN_CONVERSION "Use Java-like string-boolean conversion" ON)
+
+# necessary to provide <LIBRARY>_EXPORT.h downstream
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 
 # Define helper functions and macros.
 list(INSERT CMAKE_MODULE_PATH 0 ${PROJECT_SOURCE_DIR}/cmake)
@@ -44,7 +46,7 @@ endif()
 enable_testing()
 
 # We have a custom finder for JavaScriptCore
-find_package(JavaScriptCore REQUIRED)
+find_package(JavaScriptCore REQUIRED MODULE)
 
 set(SOURCE_HAL
   include/HAL/HAL.hpp
@@ -155,11 +157,6 @@ source_group(HAL\\JSObject         FILES ${SOURCE_JSObject})
 source_group(HAL\\JSObject\\detail FILES ${SOURCE_JSObject_detail})
 source_group(HAL\\JSLogger\\detail FILES ${SOURCE_JSLogger_detail})
 
-#set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-#set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
-
-# Turn on precompiled headers
-include(precompiled_header)
 set(SOURCE_ALL
   ${SOURCE_HAL}
   ${SOURCE_HAL_detail}
@@ -173,34 +170,43 @@ set(SOURCE_ALL
   ${SOURCE_JSObject_detail}
   ${SOURCE_JSLogger_detail}
 )
-enable_precompiled_headers(include/stdafx.h SOURCE_ALL)
+
+# Turn on precompiled headers
+include(precompiled_header)
+enable_precompiled_headers(src/stdafx.h SOURCE_ALL)
 
 add_library(HAL ${LIBRARY_BUILD_TYPE}
   ${SOURCE_ALL}
 )
 
+#Add an alias so that library can be used inside the build tree, e.g. when testing
+add_library(HAL::HAL ALIAS HAL)
+
 include(GenerateExportHeader)
 generate_export_header(HAL)
-target_compile_definitions(HAL PRIVATE HAL_EXPORTS)
-#target_compile_definitions(HAL PUBLIC HAL_STATIC_DEFINE)
+target_compile_definitions(HAL PRIVATE HAL_EXPORTS) # to mark that we're building the library
+target_compile_definitions(HAL PRIVATE STATICALLY_LINKED_WITH_JavaScriptCore) # must be set to consume JSC!
 
-target_compile_definitions(HAL PRIVATE STATICALLY_LINKED_WITH_JavaScriptCore)
-target_include_directories(HAL PUBLIC
-  ${PROJECT_SOURCE_DIR}/include
-  ${JavaScriptCore_INCLUDE_DIRS}
+target_include_directories(HAL
+  PUBLIC
+    $<INSTALL_INTERFACE:include>    
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(HAL
-  ${JavaScriptCore_LIBRARIES}
+  PUBLIC
+    JavaScriptCore::JavaScriptCore
 )
 
 if (WIN32)
-  # Silence this warning when lnking with the JavaScriptCore static
+  # Silence this warning when linking with the JavaScriptCore static
   # library:
   #
   # "warning LNK4099: PDB 'vc120.pdb' was not found with
   # 'JavaScriptCore-Debug.lib(...)' ...".
-  set_property(TARGET HAL APPEND PROPERTY LINK_FLAGS "/IGNORE:4099")
+  target_link_options(HAL PUBLIC /IGNORE:4099)
   
   # Silence this warning when lnking with the JavaScriptCore static
   # library for the i386 emulator:
@@ -263,17 +269,17 @@ if (WIN32)
   #
   # Therefore we disable /OPT:REF and /OPT:ICF for the Debug
   # configuration.
-  set_property(TARGET HAL APPEND_STRING PROPERTY LINK_FLAGS_DEBUG "/OPT:NOREF /OPT:NOICF")
+  target_link_options(HAL PUBLIC $<$<CONFIG:DEBUG>:/OPT:NOREF /OPT:NOICF>)
 
   # When building against Release version of JSC, we see a warning from the linker:
   # JavaScriptCore-Release.lib(JSStringRef.obj) : MSIL .netmodule or module compiled with /GL found; restarting link # with /LTCG; add /LTCG to the link command line to improve linker performance
   #
   # Hence we'll turn on LTCG for release builds of HAL...
-  set_property(TARGET HAL APPEND_STRING PROPERTY LINK_FLAGS_RELEASE "/LTCG")
+  target_link_options(HAL PUBLIC $<$<CONFIG:RELEASE>:/LTCG>)
 endif()
 
 if (HAL_DEFINE_JSCLASSDEFINITIONEMPTY)
-  add_definitions("-DHAL_DEFINE_JSCLASSDEFINITIONEMPTY") 
+  target_compile_definitions(HAL PRIVATE HAL_DEFINE_JSCLASSDEFINITIONEMPTY) 
 endif()
 
 if (NOT HAL_DISABLE_TESTS)
@@ -287,7 +293,7 @@ if (HAL_RENAME_AXWAYHAL)
 endif()
 
 if (HAL_USE_STRING_BOOLEAN_CONVERSION)
-  add_definitions("-DHAL_USE_STRING_BOOLEAN_CONVERSION") 
+  target_compile_definitions(HAL PRIVATE HAL_USE_STRING_BOOLEAN_CONVERSION) 
 endif()
 
 # Support find_package(HAL 0.5 REQUIRED)
@@ -299,46 +305,61 @@ set_property(TARGET HAL APPEND PROPERTY
   COMPATIBLE_INTERFACE_STRING HAL_MAJOR_VERSION
 )
 
-install(TARGETS HAL EXPORT HALTargets
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-  INCLUDES DESTINATION include
+##############################################
+# Installation instructions
+
+include(GNUInstallDirs)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/HAL)
+
+install(TARGETS HAL
+  EXPORT HALTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-export(EXPORT HALTargets
-  FILE "${CMAKE_BINARY_DIR}/HALTargets.cmake"
+#Export the targets to a script
+install(EXPORT HALTargets
+  FILE
+    HALTargets.cmake
+  NAMESPACE
+    HAL::
+  DESTINATION
+    ${INSTALL_CONFIGDIR}
 )
 
-configure_file(cmake/HALConfig.cmake
-  "${CMAKE_BINARY_DIR}/HALConfig.cmake"
-  COPYONLY
-)
-
+#Create a ConfigVersion.cmake file
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-  "${CMAKE_BINARY_DIR}/HALConfigVersion.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/HALConfigVersion.cmake"
   VERSION ${HAL_VERSION}
   COMPATIBILITY AnyNewerVersion
 )
 
-# Store the current build directory in the CMake user package registry
-# so that find_package(HAL) works.
-export(PACKAGE HAL)
-
-#[[
-# TODO: Install files to external locations.
-
-set(ConfigPackageLocation lib/cmake/HAL)
-install(EXPORT HALTargets
-  DESTINATION ${ConfigPackageLocation}
+configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/HALConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/HALConfig.cmake
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
-install(
-  FILES
+#Install the config, configversion and custom find modules
+install(FILES
+  "${CMAKE_CURRENT_LIST_DIR}/cmake/FindJavaScriptCore.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/HALConfig.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/HALConfigVersion.cmake"
-  DESTINATION ${ConfigPackageLocation}
+  DESTINATION ${INSTALL_CONFIGDIR}
   COMPONENT Devel
 )
-#]]
+
+##############################################
+## Exporting from the build tree
+configure_file(${CMAKE_CURRENT_LIST_DIR}/cmake/FindJavaScriptCore.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/FindJavaScriptCore.cmake
+    COPYONLY)
+
+export(EXPORT HALTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/HALTargets.cmake"
+)
+
+#Register package in user's package registry
+export(PACKAGE HAL)
