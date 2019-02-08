@@ -270,12 +270,6 @@ if (WIN32)
   # Therefore we disable /OPT:REF and /OPT:ICF for the Debug
   # configuration.
   target_link_options(HAL PUBLIC $<$<CONFIG:DEBUG>:/OPT:NOREF /OPT:NOICF>)
-
-  # When building against Release version of JSC, we see a warning from the linker:
-  # JavaScriptCore-Release.lib(JSStringRef.obj) : MSIL .netmodule or module compiled with /GL found; restarting link # with /LTCG; add /LTCG to the link command line to improve linker performance
-  #
-  # Hence we'll turn on LTCG for release builds of HAL...
-  target_link_options(HAL PUBLIC $<$<CONFIG:RELEASE>:/LTCG>)
 endif()
 
 if (HAL_DEFINE_JSCLASSDEFINITIONEMPTY)
